@@ -1,0 +1,243 @@
+$purple: #6c2dc7;
+$dark: #1a1a2e;
+$btn-bg: #2d2d44;
+$btn-active: #3d3d5c;
+
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem 1rem;
+  background: #e53935;
+  color: #fff;
+  text-align: center;
+  font-weight: 600;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+
+  button {
+    padding: 0.4rem 1rem;
+    background: #fff;
+    color: #e53935;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+.remote {
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: $dark;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+// Shared button style
+button {
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.top-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: center;
+
+  .nav-btn {
+    flex: 1;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: $btn-bg;
+    border-radius: 10px;
+
+    &:active {
+      background: $btn-active;
+    }
+  }
+}
+
+.dpad {
+  display: grid;
+  grid-template-areas:
+    '.    up   .'
+    'left ok   right'
+    '.    down .';
+  grid-template-columns: 72px 72px 72px;
+  grid-template-rows: 72px 72px 72px;
+  gap: 4px;
+
+  .dpad-btn {
+    font-size: 1.5rem;
+    color: #fff;
+    background: $btn-bg;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:active {
+      background: $btn-active;
+    }
+
+    &.up { grid-area: up; }
+    &.down { grid-area: down; }
+    &.left { grid-area: left; }
+    &.right { grid-area: right; }
+
+    &.ok {
+      grid-area: ok;
+      background: $purple;
+      font-size: 1rem;
+      font-weight: 700;
+
+      &:active {
+        background: #5a25a5;
+      }
+    }
+  }
+}
+
+.playback-row {
+  display: flex;
+  gap: 0.75rem;
+
+  .ctrl-btn {
+    width: 64px;
+    height: 48px;
+    font-size: 1.25rem;
+    color: #fff;
+    background: $btn-bg;
+    border-radius: 10px;
+
+    &:active {
+      background: $btn-active;
+    }
+
+    &.play {
+      width: 80px;
+      background: $purple;
+
+      &:active {
+        background: #5a25a5;
+      }
+    }
+  }
+}
+
+.volume-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: center;
+
+  .vol-btn {
+    flex: 1;
+    max-width: 100px;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: $btn-bg;
+    border-radius: 10px;
+
+    &:active {
+      background: $btn-active;
+    }
+
+    &.mute {
+      background: #c62828;
+
+      &:active {
+        background: #a12020;
+      }
+    }
+  }
+}
+
+.text-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+
+  input {
+    flex: 1;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 2px solid $btn-bg;
+    border-radius: 8px;
+    background: #0d0d1a;
+    color: #fff;
+    outline: none;
+
+    &:focus {
+      border-color: $purple;
+    }
+
+    &::placeholder {
+      color: #666;
+    }
+  }
+
+  button {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: $purple;
+    border-radius: 8px;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.bottom-row {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .listen-btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: $purple;
+    border-radius: 8px;
+  }
+
+  .disconnect-btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: #888;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 8px;
+  }
+}

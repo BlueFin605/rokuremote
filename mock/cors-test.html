@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head><title>CORS Test</title></head>
+<body>
+<h1>CORS Test — Browser → Roku (port 8060)</h1>
+<pre id="log"></pre>
+<script>
+const log = document.getElementById('log');
+function out(msg) { log.textContent += msg + '\n'; }
+
+async function test(label, url, opts = {}) {
+  try {
+    const res = await fetch(url, opts);
+    const text = await res.text();
+    out(`✅ ${label}: ${res.status} — ${text.substring(0, 100)}...`);
+  } catch (e) {
+    out(`❌ ${label}: ${e.message}`);
+  }
+}
+
+async function testNoCors(label, url, opts = {}) {
+  try {
+    const res = await fetch(url, { ...opts, mode: 'no-cors' });
+    out(`🔶 ${label}: type=${res.type} status=${res.status} (opaque = request sent but response unreadable)`);
+  } catch (e) {
+    out(`❌ ${label}: ${e.message}`);
+  }
+}
+
+(async () => {
+  const roku = 'http://localhost:8060';
+
+  out('--- Default mode (cors) ---');
+  await test('GET device-info', `${roku}/query/device-info`);
+  await test('GET apps', `${roku}/query/apps`);
+  await test('POST keypress', `${roku}/keypress/Home`, { method: 'POST' });
+
+  out('\n--- no-cors mode ---');
+  await testNoCors('POST keypress (no-cors)', `${roku}/keypress/Home`, { method: 'POST' });
+  await testNoCors('GET device-info (no-cors)', `${roku}/query/device-info`);
+})();
+</script>
+</body>
+</html>

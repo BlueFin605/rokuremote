@@ -1,0 +1,170 @@
+$purple: #6c2dc7;
+$dark: #1a1a2e;
+$btn-bg: #2d2d44;
+
+.audio-view {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  min-height: 100vh;
+  background: $dark;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+
+  h2 {
+    flex: 1;
+    text-align: center;
+    color: #fff;
+    margin: 0;
+  }
+
+  .back-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: $btn-bg;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+}
+
+.proxy-config {
+  margin-bottom: 1.5rem;
+
+  label {
+    display: block;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 0.5rem;
+
+    input {
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 0.9rem;
+      border: 2px solid $btn-bg;
+      border-radius: 8px;
+      background: #0d0d1a;
+      color: #fff;
+      outline: none;
+
+      &:focus {
+        border-color: $purple;
+      }
+    }
+
+    button {
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      background: $purple;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+
+      &:disabled {
+        opacity: 0.5;
+      }
+    }
+  }
+
+  .hint {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #888;
+  }
+}
+
+.status-card {
+  padding: 1rem;
+  background: $btn-bg;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 1rem;
+
+  .state {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  &.streaming {
+    background: #1b5e20;
+
+    .state {
+      color: #a5d6a7;
+    }
+  }
+
+  &.error {
+    background: #3e1a1a;
+
+    p {
+      color: #ef9a9a;
+    }
+
+    .hint {
+      color: #999;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+
+      code {
+        background: #0d0d1a;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+      }
+    }
+  }
+
+  .error-msg {
+    color: #ef9a9a;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+}
+
+.controls {
+  display: flex;
+  gap: 0.75rem;
+
+  .listen-btn, .stop-btn {
+    flex: 1;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+
+  .listen-btn {
+    background: $purple;
+
+    &:active {
+      background: #5a25a5;
+    }
+  }
+
+  .stop-btn {
+    background: #c62828;
+
+    &:active {
+      background: #a12020;
+    }
+  }
+}

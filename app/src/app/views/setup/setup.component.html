@@ -1,0 +1,75 @@
+<div class="setup">
+  <h1>RokuRemote</h1>
+
+  @if (proxyAvailable) {
+    <div class="discover-section">
+      <button class="discover-btn" (click)="discoverDevices()" [disabled]="discovering">
+        {{ discovering ? 'Searching...' : 'Discover Roku Devices' }}
+      </button>
+
+      @if (discoveredDevices.length > 0) {
+        <div class="device-list">
+          @for (device of discoveredDevices; track device.ip) {
+            <button class="device-item" (click)="selectDevice(device)">
+              <strong>{{ device.name }}</strong>
+              <span>{{ device.model }} &mdash; {{ device.ip }}</span>
+            </button>
+          }
+        </div>
+      }
+
+      @if (!discovering && discoveredDevices.length === 0 && !loading) {
+        <p class="hint">Or enter the IP manually below</p>
+      }
+    </div>
+  }
+
+  <div class="connect-form">
+    <label for="ip">Roku IP Address</label>
+    <div class="input-row">
+      <input
+        id="ip"
+        type="text"
+        [(ngModel)]="ipAddress"
+        placeholder="192.168.1.100"
+        (keydown.enter)="tryConnect()"
+        [disabled]="loading"
+      />
+      <button (click)="tryConnect()" [disabled]="loading || !ipAddress.trim()">
+        {{ loading ? 'Connecting...' : 'Connect' }}
+      </button>
+    </div>
+    <p class="hint">Find your Roku's IP at: Settings &gt; Network &gt; About</p>
+  </div>
+
+  @if (deviceInfo) {
+    <div class="success">
+      <p>Connected to <strong>{{ deviceInfo.name }}</strong> ({{ deviceInfo.model }})</p>
+      @if (deviceInfo.supportsPrivateListening) {
+        <p class="capability">Private listening supported</p>
+      }
+    </div>
+  }
+
+  @if (error) {
+    <div class="error">
+      @if (error.type === 'limited-mode') {
+        <p>{{ error.message }}</p>
+        <div class="instructions">
+          <p>To enable external control on your Roku:</p>
+          <ol>
+            <li>On your TV, go to <strong>Settings</strong></li>
+            <li><strong>System</strong></li>
+            <li><strong>Advanced System Settings</strong></li>
+            <li><strong>Control by Mobile Apps</strong></li>
+            <li><strong>Network Access</strong></li>
+            <li>Select <strong>Enabled</strong></li>
+          </ol>
+        </div>
+      } @else {
+        <p>{{ error.message }}</p>
+      }
+      <button class="retry" (click)="tryConnect()">Try Again</button>
+    </div>
+  }
+</div>

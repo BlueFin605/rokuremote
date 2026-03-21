@@ -1,0 +1,164 @@
+.setup {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #6c2dc7;
+  }
+}
+
+.discover-section {
+  margin-bottom: 1.5rem;
+  text-align: center;
+
+  .discover-btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: #6c2dc7;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .device-list {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .device-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    background: #2d2d44;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    color: #fff;
+
+    &:hover {
+      border-color: #6c2dc7;
+    }
+
+    span {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  }
+
+  .hint {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #888;
+  }
+}
+
+.connect-form {
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 0.5rem;
+
+    input {
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+
+      &:focus {
+        border-color: #6c2dc7;
+      }
+    }
+
+    button {
+      padding: 0.75rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: #6c2dc7;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .hint {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #888;
+  }
+}
+
+.success {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #e8f5e9;
+  border-radius: 8px;
+  text-align: center;
+
+  .capability {
+    font-size: 0.85rem;
+    color: #2e7d32;
+  }
+}
+
+.error {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #fce4ec;
+  border-radius: 8px;
+
+  .instructions {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 8px;
+
+    ol {
+      padding-left: 1.25rem;
+      li {
+        margin-bottom: 0.5rem;
+      }
+    }
+  }
+
+  .retry {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: #6c2dc7;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 1rem;
+  }
+}

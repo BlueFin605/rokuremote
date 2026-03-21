@@ -1,0 +1,66 @@
+<div class="launcher">
+  <div class="header">
+    <button class="back-btn" (click)="goBack()">&#9664; Remote</button>
+    <h2>Apps</h2>
+    <button class="edit-btn" [class.active]="editing" (click)="toggleEdit()">
+      {{ editing ? 'Done' : 'Edit' }}
+    </button>
+    <button class="refresh-btn" (click)="loadApps()" [disabled]="loading">Refresh</button>
+  </div>
+
+  <div class="search-bar">
+    <input
+      type="text"
+      [(ngModel)]="searchQuery"
+      (ngModelChange)="filterApps()"
+      placeholder="Search apps..."
+    />
+  </div>
+
+  @if (editing) {
+    <div class="edit-hint">
+      Drag apps to reorder.
+      <button class="reset-btn" (click)="resetOrder()">Reset to A-Z</button>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="status">Loading apps...</div>
+  }
+
+  @if (error) {
+    <div class="error">
+      <p>{{ error.message }}</p>
+      @if (error.type === 'limited-mode') {
+        <p>Enable external control: Settings &gt; System &gt; Advanced System Settings &gt; Control by Mobile Apps &gt; Network Access &gt; Enabled</p>
+      }
+      <button (click)="loadApps()">Retry</button>
+    </div>
+  }
+
+  @if (!loading && !error) {
+    <div class="grid" cdkDropList cdkDropListOrientation="mixed" (cdkDropListDropped)="drop($event)">
+      @for (app of filteredApps; track app.id) {
+        <div
+          class="tile"
+          [class.active]="app.id === activeAppId"
+          [class.editing]="editing"
+          [cdkDragDisabled]="!editing"
+          cdkDrag
+          (click)="launch(app)"
+        >
+          @if (app.iconUrl) {
+            <img [src]="app.iconUrl" [alt]="app.name" draggable="false" (error)="onIconError(app)" />
+          } @else {
+            <div class="placeholder">{{ app.name.charAt(0) }}</div>
+          }
+          <span class="name">{{ app.name }}</span>
+        </div>
+      }
+    </div>
+
+    @if (filteredApps.length === 0 && searchQuery) {
+      <div class="status">No apps match "{{ searchQuery }}"</div>
+    }
+  }
+</div>

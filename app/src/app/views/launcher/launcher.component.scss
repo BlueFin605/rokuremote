@@ -1,0 +1,234 @@
+$purple: #6c2dc7;
+$dark: #1a1a2e;
+$btn-bg: #2d2d44;
+
+.launcher {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100vh;
+  background: $dark;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    flex: 1;
+    text-align: center;
+    color: #fff;
+    margin: 0;
+  }
+
+  .back-btn, .refresh-btn, .edit-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: $btn-bg;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:disabled {
+      opacity: 0.4;
+    }
+  }
+
+  .edit-btn.active {
+    background: $purple;
+  }
+}
+
+.search-bar {
+  margin-bottom: 1rem;
+
+  input {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 2px solid $btn-bg;
+    border-radius: 8px;
+    background: #0d0d1a;
+    color: #fff;
+    outline: none;
+
+    &:focus {
+      border-color: $purple;
+    }
+
+    &::placeholder {
+      color: #666;
+    }
+  }
+}
+
+.edit-hint {
+  text-align: center;
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+
+  .reset-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    color: #ccc;
+    background: $btn-bg;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.25rem;
+  background: $btn-bg;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
+  &:active:not(.editing) {
+    transform: scale(0.95);
+  }
+
+  &.active {
+    border-color: $purple;
+  }
+
+  &.editing {
+    cursor: grab;
+    border: 2px dashed #555;
+    animation: wiggle 0.3s ease-in-out infinite alternate;
+  }
+
+  img {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background: #3d3d5c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .name {
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    max-width: 100%;
+  }
+}
+
+// CDK drag-drop styles
+.cdk-drag-preview {
+  background: $btn-bg;
+  border: 2px solid $purple;
+  border-radius: 12px;
+  padding: 0.75rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  opacity: 0.9;
+
+  img {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+
+  .placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background: #3d3d5c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .name {
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
+  }
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+.cdk-drag-animating {
+  transition: transform 200ms ease;
+}
+
+@keyframes wiggle {
+  0% { transform: rotate(-0.5deg); }
+  100% { transform: rotate(0.5deg); }
+}
+
+.status {
+  text-align: center;
+  color: #888;
+  padding: 2rem 0;
+}
+
+.error {
+  padding: 1rem;
+  background: #fce4ec;
+  border-radius: 8px;
+  color: #333;
+  text-align: center;
+
+  button {
+    margin-top: 0.75rem;
+    padding: 0.5rem 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    background: $purple;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+}

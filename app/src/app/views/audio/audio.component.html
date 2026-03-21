@@ -1,0 +1,56 @@
+<div class="audio-view">
+  <div class="header">
+    <button class="back-btn" (click)="goBack()">&#9664; Remote</button>
+    <h2>Private Listening</h2>
+  </div>
+
+  <div class="proxy-config">
+    <label for="proxy-url">Audio Proxy URL</label>
+    <div class="input-row">
+      <input
+        id="proxy-url"
+        type="text"
+        [(ngModel)]="proxyUrl"
+        placeholder="http://192.168.1.50:8080"
+        (keydown.enter)="checkProxy()"
+      />
+      <button (click)="checkProxy()" [disabled]="checking">
+        {{ checking ? 'Checking...' : 'Connect' }}
+      </button>
+    </div>
+    <p class="hint">Enter the IP of the machine running roku-proxy (desktop or ESP32)</p>
+  </div>
+
+  @if (!checking && !proxyAvailable) {
+    <div class="status-card error">
+      <p>Audio proxy not found at {{ proxyUrl }}</p>
+      <p class="hint">Make sure roku-proxy is running: <code>./roku-proxy --port 8080</code></p>
+    </div>
+  }
+
+  @if (proxyAvailable) {
+    <div class="status-card" [class.streaming]="proxyStatus.state === 'streaming'">
+      <p class="state">{{ proxyStatus.state | titlecase }}</p>
+
+      @if (proxyStatus.state === 'error' && proxyStatus.error) {
+        <p class="error-msg">{{ proxyStatus.error }}</p>
+      }
+    </div>
+
+    <div class="controls">
+      @if (proxyStatus.state === 'idle' || proxyStatus.state === 'error') {
+        <button class="listen-btn" (click)="startListening()">Start Listening</button>
+      }
+
+      @if (proxyStatus.state === 'streaming' || proxyStatus.state === 'connecting' || proxyStatus.state === 'authenticating') {
+        <button class="stop-btn" (click)="stopListening()">Stop</button>
+      }
+    </div>
+
+    @if (error) {
+      <div class="status-card error">
+        <p>{{ error }}</p>
+      </div>
+    }
+  }
+</div>
