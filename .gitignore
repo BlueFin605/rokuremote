@@ -17,11 +17,3 @@ Thumbs.db
 .settings/
 *.sublime-workspace
 
-# CDK (C#)
-infra/bin/
-infra/obj/
-infra/cdk.out/
-
-# C++ proxy
-proxy/build/
-proxy/cmake-build-*/
