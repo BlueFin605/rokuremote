@@ -9,3 +9,4 @@ my roku remote with private listening
 
 # similar implementations
 * http://rokurc.com/
+* http://2kit.de/remote-for-roku/mobile.html?rokuip=192.168.50.144
