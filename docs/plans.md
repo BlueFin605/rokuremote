@@ -13,7 +13,7 @@ Plan 1: Project Scaffolding          ✅ COMPLETE
         └─► Plan 4: Remote Control          ✅ COMPLETE
               └─► Plan 5: App Launcher      ✅ COMPLETE
                     └─► Plan 6: Audio Proxy (Desktop)   ✅ COMPLETE (pending real Roku)
-                          └─► Plan 7: Audio Proxy (ESP32)   ⬜ NOT STARTED
+                          └─► Plan 7: Audio Proxy (ESP32)   🔧 CODE COMPLETE (needs hardware)
 ```
 
 Plans 1-2 can run in parallel. Plan 3 depends on 1. Each subsequent plan depends on the previous.
@@ -101,20 +101,35 @@ All code is implemented and tested against the mock Roku. Two truth statements r
 
 ## Plan 7: Audio Proxy (ESP32)
 
-**Status:** Not started. Depends on Plan 6 completion.
+**Status:** Code complete. Needs ESP-IDF build environment + real hardware to verify.
 
 **Satisfies:** Flow 3, North Star #8-10, Design — Phase 3 (ESP32 deployment)
 
 **Ancestors:** Plan 6
 
+### Implementation
+
+ESP-IDF project in `esp32/` with all proxy functionality ported:
+- **Wi-Fi**: STA mode with auto-reconnect and backoff (`wifi_manager.cpp`)
+- **Auth**: mbedtls SHA1 + base64 replacing OpenSSL (`roku_auth.cpp`)
+- **RTP/RTCP**: lwIP sockets + FreeRTOS tasks replacing std::thread (`rtp_receiver.cpp`)
+- **WebSocket**: esp_websocket_client replacing IXWebSocket (`roku_session.cpp`)
+- **HTTP API**: esp_http_server replacing cpp-httplib, same endpoint contract (`http_server.cpp`)
+- **SSDP**: lwIP multicast + esp_http_client replacing std::regex + httplib (`ssdp_discovery.cpp`)
+- **Audio buffer**: FreeRTOS queue (100 frames) replacing std::deque + mutex (`audio_buffer.h`)
+- **Config**: Kconfig menuconfig for Wi-Fi credentials, HTTP port, RTP port
+
+Build: `cd esp32 && idf.py set-target esp32 && idf.py menuconfig && idf.py build`
+Flash: `idf.py -p /dev/ttyUSB0 flash monitor`
+
 ### Truth Statements
 
-- [ ] The C++ proxy code compiles for ESP32 using ESP-IDF.
-- [ ] The ESP32 firmware can be flashed and boots successfully.
-- [ ] The ESP32 connects to Wi-Fi and obtains an IP address.
-- [ ] All proxy HTTP API endpoints (`/discover`, `/start`, `/stop`, `/status`, `/audio`) respond correctly from the ESP32.
-- [ ] The ESP32 successfully completes WebSocket auth with the Roku.
-- [ ] The ESP32 receives RTP Opus packets and serves audio to the phone browser.
-- [ ] Audio quality and latency are acceptable for watching TV.
+- [ ] **NEEDS ESP-IDF:** The C++ proxy code compiles for ESP32 using ESP-IDF.
+- [ ] **NEEDS HARDWARE:** The ESP32 firmware can be flashed and boots successfully.
+- [ ] **NEEDS HARDWARE:** The ESP32 connects to Wi-Fi and obtains an IP address.
+- [ ] **NEEDS HARDWARE:** All proxy HTTP API endpoints (`/discover`, `/start`, `/stop`, `/status`, `/audio`) respond correctly from the ESP32.
+- [ ] **NEEDS HARDWARE:** The ESP32 successfully completes WebSocket auth with the Roku.
+- [ ] **NEEDS HARDWARE:** The ESP32 receives RTP Opus packets and serves audio to the phone browser.
+- [ ] **NEEDS HARDWARE:** Audio quality and latency are acceptable for watching TV.
 - [ ] The Angular app works identically whether the proxy is the desktop version or the ESP32 — no code changes needed in the Angular app.
-- [ ] The ESP32 recovers from Wi-Fi disconnections and can be restarted without manual intervention.
+- [ ] **NEEDS HARDWARE:** The ESP32 recovers from Wi-Fi disconnections and can be restarted without manual intervention.

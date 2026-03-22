@@ -1,0 +1,19 @@
+# Wi-Fi credentials (override via menuconfig)
+CONFIG_PROXY_WIFI_SSID="YourSSID"
+CONFIG_PROXY_WIFI_PASSWORD="YourPassword"
+
+# HTTP server
+CONFIG_HTTPD_MAX_URI_HANDLERS=12
+
+# lwIP — need enough sockets for RTP, RTCP, SSDP, HTTP client, HTTP server
+CONFIG_LWIP_MAX_SOCKETS=16
+CONFIG_LWIP_SO_RCVBUF=y
+
+# mbedTLS — SHA1 required for Roku auth
+CONFIG_MBEDTLS_SHA1_C=y
+
+# Task watchdog — increase timeout for long-running audio handler
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=30
+
+# Partition table — single factory app, enough space
+CONFIG_PARTITION_TABLE_SINGLE_APP=y
