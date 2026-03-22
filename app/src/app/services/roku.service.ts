@@ -34,6 +34,10 @@ export class RokuService {
   private commandQueue = new Subject<{ key: string; action: 'keypress' | 'keydown' | 'keyup' }>();
   private connectionError = new Subject<void>();
 
+  private get baseUrl(): string {
+    return `http://${this.rokuIp}:8060`;
+  }
+
   connectionLost$ = this.connectionError.asObservable();
 
   constructor(private http: HttpClient) {
@@ -46,9 +50,8 @@ export class RokuService {
   }
 
   connect(ip: string): Observable<RokuDeviceInfo> {
-    return this.http.get(`/roku-api/query/device-info`, {
+    return this.http.get(`http://${ip}:8060/query/device-info`, {
       responseType: 'text',
-      params: { _rokuIp: ip }
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
       map(xml => this.parseDeviceInfo(xml)),
@@ -90,9 +93,8 @@ export class RokuService {
   }
 
   getApps(): Observable<RokuApp[]> {
-    return this.http.get(`/roku-api/query/apps`, {
+    return this.http.get(`${this.baseUrl}/query/apps`, {
       responseType: 'text',
-      params: { _rokuIp: this.rokuIp! }
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
       map(xml => this.parseApps(xml)),
@@ -101,9 +103,8 @@ export class RokuService {
   }
 
   getActiveApp(): Observable<string | null> {
-    return this.http.get(`/roku-api/query/active-app`, {
+    return this.http.get(`${this.baseUrl}/query/active-app`, {
       responseType: 'text',
-      params: { _rokuIp: this.rokuIp! }
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
       map(xml => {
@@ -117,13 +118,12 @@ export class RokuService {
   }
 
   getAppIconUrl(appId: string): string {
-    return `/roku-api/query/icon/${appId}?_rokuIp=${this.rokuIp}`;
+    return `${this.baseUrl}/query/icon/${appId}`;
   }
 
   launchApp(appId: string): Observable<string> {
-    return this.http.post(`/roku-api/launch/${appId}`, null, {
+    return this.http.post(`${this.baseUrl}/launch/${appId}`, null, {
       responseType: 'text',
-      params: { _rokuIp: this.rokuIp! }
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
       catchError(err => this.handleError(err)),
@@ -168,9 +168,8 @@ export class RokuService {
   }
 
   private sendCommand(action: string, key: string): Observable<string> {
-    return this.http.post(`/roku-api/${action}/${key}`, null, {
+    return this.http.post(`${this.baseUrl}/${action}/${key}`, null, {
       responseType: 'text',
-      params: { _rokuIp: this.rokuIp! }
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
     );

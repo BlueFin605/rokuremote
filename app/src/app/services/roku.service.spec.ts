@@ -40,9 +40,8 @@ describe('RokuService', () => {
         done();
       });
 
-      const req = httpMock.expectOne(r => r.url === '/roku-api/query/device-info');
+      const req = httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info');
       expect(req.request.method).toBe('GET');
-      expect(req.request.params.get('_rokuIp')).toBe('192.168.1.100');
       req.flush(deviceInfoXml);
     });
 
@@ -53,7 +52,7 @@ describe('RokuService', () => {
         done();
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/device-info').flush(deviceInfoXml);
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(deviceInfoXml);
     });
 
     it('should fall back to default-device-name when friendly name is missing', (done) => {
@@ -69,7 +68,7 @@ describe('RokuService', () => {
         done();
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/device-info').flush(xml);
+      httpMock.expectOne(r => r.url === 'http://10.0.0.1:8060/query/device-info').flush(xml);
     });
 
     it('should return limited-mode error for 403 with Limited mode message', (done) => {
@@ -80,7 +79,7 @@ describe('RokuService', () => {
         },
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/device-info')
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info')
         .flush('ECP command not allowed in Limited mode.', { status: 403, statusText: 'Forbidden' });
     });
   });
@@ -99,7 +98,7 @@ describe('RokuService', () => {
     it('should send POST to correct keypress URL', fakeAsync(() => {
       // Connect first to set the IP
       service.connect('192.168.1.100').subscribe();
-      httpMock.expectOne(r => r.url === '/roku-api/query/device-info').flush(`
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(`
         <device-info>
           <friendly-device-name>Roku</friendly-device-name>
           <model-name>Test</model-name>
@@ -110,9 +109,8 @@ describe('RokuService', () => {
       tick();
 
       const req = httpMock.expectOne(r =>
-        r.url === '/roku-api/keypress/Home' && r.method === 'POST'
+        r.url === 'http://192.168.1.100:8060/keypress/Home' && r.method === 'POST'
       );
-      expect(req.request.params.get('_rokuIp')).toBe('192.168.1.100');
       req.flush('');
       tick(100);
     }));
@@ -120,17 +118,21 @@ describe('RokuService', () => {
 
   describe('sendText', () => {
     it('should send each character as a Lit_ keypress', fakeAsync(() => {
-      localStorage.setItem('roku-ip', '192.168.1.100');
-      const svc = TestBed.inject(RokuService);
+      service.connect('192.168.1.100').subscribe();
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(`<device-info>
+        <friendly-device-name>Roku</friendly-device-name>
+        <model-name>Test</model-name>
+        <supports-private-listening>false</supports-private-listening>
+      </device-info>`);
 
-      svc.sendText('Hi');
+      service.sendText('Hi');
       tick(); // first command enters concatMap
 
-      const req1 = httpMock.expectOne(r => r.url === '/roku-api/keypress/Lit_H');
+      const req1 = httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/keypress/Lit_H');
       req1.flush('');
       tick(100); // delay between commands
 
-      const req2 = httpMock.expectOne(r => r.url === '/roku-api/keypress/Lit_i');
+      const req2 = httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/keypress/Lit_i');
       req2.flush('');
       tick(100);
     }));
@@ -144,14 +146,21 @@ describe('RokuService', () => {
         <app id="15" type="appl" version="5.0.0">YouTube</app>
       </apps>`;
 
-    beforeEach(() => {
-      localStorage.setItem('roku-ip', '192.168.1.100');
-    });
+    const connectXml = `<device-info>
+      <friendly-device-name>Roku</friendly-device-name>
+      <model-name>Test</model-name>
+      <supports-private-listening>false</supports-private-listening>
+    </device-info>`;
+
+    function connectService(svc: RokuService, mock: HttpTestingController) {
+      svc.connect('192.168.1.100').subscribe();
+      mock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(connectXml);
+    }
 
     it('should parse apps from XML and sort alphabetically', (done) => {
-      const svc = TestBed.inject(RokuService);
+      connectService(service, httpMock);
 
-      svc.getApps().subscribe(apps => {
+      service.getApps().subscribe(apps => {
         expect(apps.length).toBe(3);
         expect(apps[0].name).toBe('Amazon Prime Video');
         expect(apps[1].name).toBe('Netflix');
@@ -161,59 +170,69 @@ describe('RokuService', () => {
         done();
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/apps').flush(appsXml);
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/apps').flush(appsXml);
     });
 
     it('should include icon URLs for each app', (done) => {
-      const svc = TestBed.inject(RokuService);
+      connectService(service, httpMock);
 
-      svc.getApps().subscribe(apps => {
-        expect(apps[1].iconUrl).toContain('/roku-api/query/icon/12');
+      service.getApps().subscribe(apps => {
+        expect(apps[1].iconUrl).toContain('http://192.168.1.100:8060/query/icon/12');
         done();
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/apps').flush(appsXml);
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/apps').flush(appsXml);
     });
   });
 
   describe('launchApp', () => {
     it('should POST to launch endpoint', (done) => {
-      localStorage.setItem('roku-ip', '192.168.1.100');
-      const svc = TestBed.inject(RokuService);
+      service.connect('192.168.1.100').subscribe();
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(`<device-info>
+        <friendly-device-name>Roku</friendly-device-name>
+        <model-name>Test</model-name>
+        <supports-private-listening>false</supports-private-listening>
+      </device-info>`);
 
-      svc.launchApp('12').subscribe(() => done());
+      service.launchApp('12').subscribe(() => done());
 
       const req = httpMock.expectOne(r =>
-        r.url === '/roku-api/launch/12' && r.method === 'POST'
+        r.url === 'http://192.168.1.100:8060/launch/12' && r.method === 'POST'
       );
       req.flush('');
     });
   });
 
   describe('getActiveApp', () => {
-    it('should return the active app ID', (done) => {
-      localStorage.setItem('roku-ip', '192.168.1.100');
-      const svc = TestBed.inject(RokuService);
+    const connectXml = `<device-info>
+      <friendly-device-name>Roku</friendly-device-name>
+      <model-name>Test</model-name>
+      <supports-private-listening>false</supports-private-listening>
+    </device-info>`;
 
-      svc.getActiveApp().subscribe(id => {
+    it('should return the active app ID', (done) => {
+      service.connect('192.168.1.100').subscribe();
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(connectXml);
+
+      service.getActiveApp().subscribe(id => {
         expect(id).toBe('12');
         done();
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/active-app')
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/active-app')
         .flush('<active-app><app id="12">Netflix</app></active-app>');
     });
 
     it('should return empty string when no app is active', (done) => {
-      localStorage.setItem('roku-ip', '192.168.1.100');
-      const svc = TestBed.inject(RokuService);
+      service.connect('192.168.1.100').subscribe();
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(connectXml);
 
-      svc.getActiveApp().subscribe(id => {
+      service.getActiveApp().subscribe(id => {
         expect(id).toBe('');
         done();
       });
 
-      httpMock.expectOne(r => r.url === '/roku-api/query/active-app')
+      httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/active-app')
         .flush('<active-app><app id="">Roku</app></active-app>');
     });
   });
