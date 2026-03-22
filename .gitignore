@@ -1,28 +1,27 @@
-# Angular specific
-/dist/
-/out-tsc/
-/tmp/
-/coverage/
-/e2e/test-output/
-/.angular/
-.angular/
+#Claude
+.claude/
 
-# Node modules and dependency files
-/node_modules/
-/package-lock.json
-/yarn.lock
+# RepoQL
+.repoql/
 
-# Environment files
-/.env
+# Obsidian
+.obsidian/
 
-# Angular CLI and build artefacts
-/.angular-cli.json
-/.ng/
+# System files
+.DS_Store
+Thumbs.db
 
-# TypeScript cache
-*.tsbuildinfo
+# IDEs
+.idea/
+.vscode/
+.settings/
+*.sublime-workspace
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# CDK (C#)
+infra/bin/
+infra/obj/
+infra/cdk.out/
+
+# C++ proxy
+proxy/build/
+proxy/cmake-build-*/
