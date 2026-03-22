@@ -52,7 +52,7 @@ describe('SetupComponent', () => {
     component.ipAddress = '192.168.1.100';
     component.tryConnect();
 
-    httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info').flush(`
+    httpMock.expectOne(r => r.url === 'http://localhost:8080/roku/query/device-info?ip=192.168.1.100').flush(`
       <device-info>
         <friendly-device-name>Living Room Roku</friendly-device-name>
         <model-name>Express</model-name>
@@ -70,7 +70,7 @@ describe('SetupComponent', () => {
     component.ipAddress = '192.168.1.100';
     component.tryConnect();
 
-    httpMock.expectOne(r => r.url === 'http://192.168.1.100:8060/query/device-info')
+    httpMock.expectOne(r => r.url === 'http://localhost:8080/roku/query/device-info?ip=192.168.1.100')
       .flush('ECP command not allowed in Limited mode.', { status: 403, statusText: 'Forbidden' });
 
     fixture.detectChanges();
@@ -85,7 +85,7 @@ describe('SetupComponent', () => {
     component.ipAddress = '10.0.0.5';
     component.tryConnect();
 
-    const req = httpMock.expectOne(r => r.url === 'http://10.0.0.5:8060/query/device-info');
+    const req = httpMock.expectOne(r => r.url === 'http://localhost:8080/roku/query/device-info?ip=10.0.0.5');
     req.flush(`<device-info>
       <friendly-device-name>Roku</friendly-device-name>
       <model-name>Ultra</model-name>
@@ -98,6 +98,6 @@ describe('SetupComponent', () => {
   it('should not connect when IP is empty', () => {
     component.ipAddress = '   ';
     component.tryConnect();
-    httpMock.expectNone(r => r.url === 'http://192.168.1.100:8060/query/device-info');
+    httpMock.expectNone(r => r.url === 'http://localhost:8080/roku/query/device-info?ip=192.168.1.100');
   });
 });

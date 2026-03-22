@@ -156,6 +156,56 @@ void HttpServer::setup_routes() {
         res.set_content(j.dump(), "application/json");
     });
 
+    // GET /roku/<path>?ip=<roku-ip> — Forward GET to Roku ECP
+    srv.Get(R"(/roku/(.*))", [](const httplib::Request& req, httplib::Response& res) {
+        std::string roku_ip = req.get_param_value("ip");
+        if (roku_ip.empty()) {
+            res.status = 400;
+            res.set_content(R"({"error":"Missing ip parameter"})", "application/json");
+            return;
+        }
+
+        std::string path = "/" + req.matches[1].str();
+        httplib::Client client(roku_ip, 8060);
+        client.set_connection_timeout(3);
+        client.set_read_timeout(3);
+
+        auto result = client.Get(path);
+        if (!result) {
+            res.status = 502;
+            res.set_content(R"({"error":"Could not reach Roku"})", "application/json");
+            return;
+        }
+
+        res.status = result->status;
+        res.set_content(result->body, result->get_header_value("Content-Type"));
+    });
+
+    // POST /roku/<path>?ip=<roku-ip> — Forward POST to Roku ECP
+    srv.Post(R"(/roku/(.*))", [](const httplib::Request& req, httplib::Response& res) {
+        std::string roku_ip = req.get_param_value("ip");
+        if (roku_ip.empty()) {
+            res.status = 400;
+            res.set_content(R"({"error":"Missing ip parameter"})", "application/json");
+            return;
+        }
+
+        std::string path = "/" + req.matches[1].str();
+        httplib::Client client(roku_ip, 8060);
+        client.set_connection_timeout(3);
+        client.set_read_timeout(3);
+
+        auto result = client.Post(path);
+        if (!result) {
+            res.status = 502;
+            res.set_content(R"({"error":"Could not reach Roku"})", "application/json");
+            return;
+        }
+
+        res.status = result->status;
+        res.set_content(result->body, result->get_header_value("Content-Type"));
+    });
+
     // GET /audio — Streaming Opus frames as binary.
     // Each frame is prefixed with a 2-byte big-endian length.
     // This allows the browser to parse individual Opus frames.

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, timeout, catchError, throwError, Subject, concatMap, delay, of } from 'rxjs';
+import { ProxyService } from './proxy.service';
 
 export interface RokuDeviceInfo {
   name: string;
@@ -34,13 +35,14 @@ export class RokuService {
   private commandQueue = new Subject<{ key: string; action: 'keypress' | 'keydown' | 'keyup' }>();
   private connectionError = new Subject<void>();
 
-  private get baseUrl(): string {
-    return `http://${this.rokuIp}:8060`;
+  private rokuUrl(path: string, ip?: string): string {
+    const proxyUrl = this.proxy.getProxyUrl();
+    return `${proxyUrl}/roku/${path}?ip=${ip ?? this.rokuIp}`;
   }
 
   connectionLost$ = this.connectionError.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private proxy: ProxyService) {
     this.rokuIp = localStorage.getItem(RokuService.STORAGE_KEY);
     this.initCommandQueue();
   }
@@ -50,7 +52,7 @@ export class RokuService {
   }
 
   connect(ip: string): Observable<RokuDeviceInfo> {
-    return this.http.get(`http://${ip}:8060/query/device-info`, {
+    return this.http.get(this.rokuUrl('query/device-info', ip), {
       responseType: 'text',
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
@@ -93,7 +95,7 @@ export class RokuService {
   }
 
   getApps(): Observable<RokuApp[]> {
-    return this.http.get(`${this.baseUrl}/query/apps`, {
+    return this.http.get(this.rokuUrl('query/apps'), {
       responseType: 'text',
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
@@ -103,7 +105,7 @@ export class RokuService {
   }
 
   getActiveApp(): Observable<string | null> {
-    return this.http.get(`${this.baseUrl}/query/active-app`, {
+    return this.http.get(this.rokuUrl('query/active-app'), {
       responseType: 'text',
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
@@ -118,11 +120,11 @@ export class RokuService {
   }
 
   getAppIconUrl(appId: string): string {
-    return `${this.baseUrl}/query/icon/${appId}`;
+    return this.rokuUrl(`query/icon/${appId}`);
   }
 
   launchApp(appId: string): Observable<string> {
-    return this.http.post(`${this.baseUrl}/launch/${appId}`, null, {
+    return this.http.post(this.rokuUrl(`launch/${appId}`), null, {
       responseType: 'text',
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
@@ -168,7 +170,7 @@ export class RokuService {
   }
 
   private sendCommand(action: string, key: string): Observable<string> {
-    return this.http.post(`${this.baseUrl}/${action}/${key}`, null, {
+    return this.http.post(this.rokuUrl(`${action}/${key}`), null, {
       responseType: 'text',
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
