@@ -1,0 +1,3 @@
+{
+  "app": "dotnet run --project RokuRemote.Infra/RokuRemote.Infra.csproj"
+}

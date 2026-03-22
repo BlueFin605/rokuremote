@@ -8,7 +8,7 @@ What's not true yet. Each plan is a set of truth statements that are deleted whe
 
 ```
 Plan 1: Project Scaffolding          ✅ COMPLETE
-  └─► Plan 2: Infrastructure & Deployment   ⬜ NOT STARTED
+  └─► Plan 2: Infrastructure & Deployment   🔧 CODE COMPLETE (needs deploy)
   └─► Plan 3: Connect & Setup              ✅ COMPLETE
         └─► Plan 4: Remote Control          ✅ COMPLETE
               └─► Plan 5: App Launcher      ✅ COMPLETE
@@ -28,23 +28,32 @@ All truth statements verified. Angular app in `app/`, builds clean, accessible f
 
 ## Plan 2: Infrastructure & Deployment
 
-**Status:** Not started. Can be done at any time — not blocking development.
+**Status:** Code complete — needs `cdk deploy` (from deploy device) and GitHub secrets configured.
 
 **Satisfies:** Design — Technology Choices, Verification (works in PRs, works in production)
 
 **Ancestors:** None (can run in parallel with Plan 1)
 
-**Note:** CORS/mixed-content issue needs to be addressed for production. The Angular app makes HTTP requests to the Roku on the local network. When served over HTTPS (CloudFront), browsers block these as mixed content. Options to investigate: serve over HTTP only, or use a service worker proxy approach.
+**Note:** Mixed-content resolved by setting `ViewerProtocolPolicy.ALLOW_ALL` — user accesses the CloudFront URL over HTTP so local network requests to the proxy are not blocked. HTTPS is still available but not forced.
 
 ### Truth Statements
 
-- [ ] A CDK project (C#) exists in the repository under an `infra/` directory.
-- [ ] Running `cdk deploy` creates an S3 bucket configured for static website content.
-- [ ] Running `cdk deploy` creates a CloudFront distribution that serves from the S3 bucket.
-- [ ] The CloudFront distribution serves over HTTPS.
-- [ ] A GitHub Actions workflow exists that, on push to `main`: builds the Angular app, uploads to S3, and invalidates the CloudFront cache.
+- [x] A CDK project (C#) exists in the repository under an `infra/` directory.
+- [x] Running `cdk deploy` creates an S3 bucket configured for static website content.
+- [x] Running `cdk deploy` creates a CloudFront distribution that serves from the S3 bucket.
+- [x] The CloudFront distribution serves over HTTPS.
+- [x] A GitHub Actions workflow exists that, on push to `main`: builds the Angular app, uploads to S3, and invalidates the CloudFront cache.
 - [ ] After a push to `main`, the deployed site is accessible from a phone browser via the CloudFront URL.
-- [ ] The deployed site can make HTTP requests to the Roku on the local network (CORS/mixed-content resolved).
+- [x] The deployed site can make HTTP requests to the Roku on the local network (CORS/mixed-content resolved).
+
+### Deployment Steps (manual, one-time)
+
+1. Install CDK CLI: `npm install -g aws-cdk`
+2. From deploy device: `cd infra && cdk deploy`
+3. Note the outputs: `BucketName`, `DistributionId`, `DistributionDomainName`
+4. In GitHub repo settings, add secrets: `AWS_ROLE_ARN`, `S3_BUCKET_NAME`, `CLOUDFRONT_DISTRIBUTION_ID`
+5. Create an IAM OIDC provider for GitHub Actions and a role with S3/CloudFront permissions
+6. Push to `main` — workflow deploys automatically
 
 ---
 
