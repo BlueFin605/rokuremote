@@ -4,6 +4,7 @@
 #include <vector>
 #include <atomic>
 #include <thread>
+#include <string>
 
 namespace roku {
 
@@ -21,11 +22,27 @@ public:
     void stop();
     bool is_running() const { return running_.load(); }
 
+    // Set the Roku's address for sending RTCP receiver reports
+    void set_rtcp_target(const std::string& roku_ip, int rtcp_port = 5150);
+
 private:
     int port_;
     int socket_fd_ = -1;
+    int rtcp_fd_ = -1;
     std::atomic<bool> running_{false};
     std::thread recv_thread_;
+    std::thread rtcp_thread_;
+
+    // RTCP target
+    std::string rtcp_target_ip_;
+    int rtcp_target_port_ = 5150;
+
+    // Stats for RTCP RR
+    std::atomic<uint32_t> ssrc_{0};
+    std::atomic<uint32_t> packets_received_{0};
+    std::atomic<uint32_t> last_seq_{0};
+
+    void rtcp_loop();
 };
 
 } // namespace roku

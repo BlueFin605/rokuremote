@@ -117,8 +117,9 @@ void HttpServer::setup_routes() {
 
         impl_->audio_buffer.clear();
 
-        // Start RTP receiver
+        // Start RTP receiver with RTCP keepalive back to Roku
         impl_->receiver = std::make_unique<RtpReceiver>(impl_->rtp_port);
+        impl_->receiver->set_rtcp_target(roku_ip);
         impl_->receiver->start([this](const uint8_t* data, size_t len, uint32_t, uint16_t) {
             impl_->audio_buffer.push(data, len);
         });
