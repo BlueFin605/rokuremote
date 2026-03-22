@@ -100,12 +100,14 @@ void Session::handle_message(const std::string& text) {
 
             if (resp == "authenticate" && status == "200") {
                 // Auth succeeded — tell Roku where to send audio
-                std::string audio_dest = local_ip_ + ":" + std::to_string(rtp_port_);
+                // Format: IP:RTP_PORT:LATENCY:CLOCK_RATE_DIV50
+                std::string audio_dest = local_ip_ + ":" + std::to_string(rtp_port_) + ":97:960";
 
                 json set_output;
                 set_output["request"] = "set-audio-output";
                 set_output["request-id"] = "1";
-                set_output["param-device-name"] = audio_dest;
+                set_output["param-devname"] = audio_dest;
+                set_output["param-audio-output"] = "datagram";
 
                 impl_->ws.send(set_output.dump());
             }

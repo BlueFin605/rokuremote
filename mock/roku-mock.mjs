@@ -300,7 +300,7 @@ wss.on('connection', (ws) => {
           }));
         }
       } else if (msg.request === 'set-audio-output') {
-        const target = msg['param-device-name'] || '';
+        const target = msg['param-devname'] || msg['param-device-name'] || '';
         audioOutputTarget = target;
         console.log(`[ws]       Audio output set to: ${target}`);
 
