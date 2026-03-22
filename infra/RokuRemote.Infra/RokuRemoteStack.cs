@@ -12,6 +12,7 @@ public class RokuRemoteStack : Stack
     {
         var bucket = new Bucket(this, "SiteBucket", new BucketProps
         {
+            BucketName = "rokuremote-pages-production",
             RemovalPolicy = RemovalPolicy.DESTROY,
             AutoDeleteObjects = true,
             BlockPublicAccess = BlockPublicAccess.BLOCK_ALL

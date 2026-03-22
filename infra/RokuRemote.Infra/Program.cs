@@ -8,4 +8,8 @@ new RokuRemoteStack(app, "RokuRemoteStack", new StackProps
         Region = "ap-southeast-2"
     }
 });
+
+Tags.Of(app).Add("Project", "RokuRemote");
+Tags.Of(app).Add("Environment", "Production");
+
 app.Synth();
