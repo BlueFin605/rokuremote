@@ -97,11 +97,31 @@ In menuconfig, go to **Roku Proxy Configuration** and set:
 
 ### Build & Flash
 
+**Option A: Flash from pre-built firmware (GitHub Actions)**
+
+Download the `roku-proxy-esp32` artifact from the latest [Actions build](https://github.com/deanmitchell/RokuRemote/actions), then flash with esptool:
+
 ```bash
+pip install esptool    # if not already installed
+
+esptool.py --chip esp32 -p /dev/tty.usbserial-0001 write_flash \
+  0x1000  bootloader.bin \
+  0x8000  partition-table.bin \
+  0x10000 roku-proxy-esp32.bin
+```
+
+Note: Pre-built firmware uses the default Wi-Fi credentials from `sdkconfig.defaults`. To set your own, use Option B or update `sdkconfig.defaults` before pushing.
+
+**Option B: Build locally with ESP-IDF**
+
+```bash
+cd esp32
+idf.py set-target esp32
+idf.py menuconfig          # set Wi-Fi credentials and ports
 idf.py -p /dev/tty.usbserial-0001 flash monitor
 ```
 
-Once connected, the serial output shows the ESP32's IP address. Use that as the proxy URL in the app.
+Once running, the serial output shows the ESP32's IP address. The ESP32 also advertises itself as `roku-proxy.local` via mDNS — the app uses this by default.
 
 ### Troubleshooting
 
