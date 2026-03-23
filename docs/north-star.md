@@ -28,6 +28,7 @@ What great looks like from the user's perspective. Testable statements, not feat
 8. I can listen to my Roku's audio privately through my phone's headphones or speaker.
 9. Private listening starts and stops cleanly — no audio artifacts, no stuck connections.
 10. Audio latency is low enough that lip-sync is acceptable for watching TV.
+10a. I can tune audio latency to balance between responsiveness and stability on my network.
 
 ## Access & Installation
 
