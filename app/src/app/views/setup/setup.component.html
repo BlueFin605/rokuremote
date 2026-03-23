@@ -72,4 +72,30 @@
       <button class="retry" (click)="tryConnect()">Try Again</button>
     </div>
   }
+
+  <div class="proxy-section">
+    <button class="proxy-toggle" (click)="showProxyConfig = !showProxyConfig">
+      Proxy Settings {{ showProxyConfig ? '&#9650;' : '&#9660;' }}
+    </button>
+
+    @if (showProxyConfig) {
+      <div class="proxy-config">
+        <label for="proxy-url">Proxy URL</label>
+        <div class="input-row">
+          <input
+            id="proxy-url"
+            type="text"
+            [(ngModel)]="proxyUrl"
+            placeholder="http://roku-proxy.local:8080"
+            (keydown.enter)="saveProxyUrl()"
+          />
+          <button (click)="saveProxyUrl()">Save</button>
+        </div>
+        <div class="proxy-actions">
+          <button class="reset-btn" (click)="resetProxyUrl()">Reset to Default</button>
+        </div>
+        <p class="hint">Default: {{ proxy.getDefaultUrl() }}</p>
+      </div>
+    }
+  </div>
 </div>

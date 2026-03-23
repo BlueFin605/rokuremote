@@ -20,11 +20,16 @@ export class SetupComponent implements OnInit {
   discovering = false;
   discoveredDevices: ProxyDevice[] = [];
 
+  proxyUrl: string;
+  showProxyConfig = false;
+
   constructor(
     private roku: RokuService,
-    private proxy: ProxyService,
+    public proxy: ProxyService,
     private router: Router,
-  ) {}
+  ) {
+    this.proxyUrl = proxy.getProxyUrl();
+  }
 
   ngOnInit(): void {
     const savedIp = this.roku.getSavedIp();
@@ -79,5 +84,23 @@ export class SetupComponent implements OnInit {
   selectDevice(device: ProxyDevice): void {
     this.ipAddress = device.ip;
     this.tryConnect();
+  }
+
+  saveProxyUrl(): void {
+    this.proxy.setProxyUrl(this.proxyUrl);
+    this.recheckProxy();
+  }
+
+  resetProxyUrl(): void {
+    this.proxy.resetToDefault();
+    this.proxyUrl = this.proxy.getProxyUrl();
+    this.recheckProxy();
+  }
+
+  private recheckProxy(): void {
+    this.proxyAvailable = false;
+    this.proxy.isAvailable().subscribe(available => {
+      this.proxyAvailable = available;
+    });
   }
 }

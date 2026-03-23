@@ -14,7 +14,6 @@ import { AudioPlayerService } from '../../services/audio-player.service';
   styleUrl: './audio.component.scss'
 })
 export class AudioComponent implements OnInit, OnDestroy {
-  proxyUrl: string;
   proxyAvailable = false;
   proxyStatus: ProxyStatus = { state: 'idle' };
   checking = true;
@@ -27,9 +26,7 @@ export class AudioComponent implements OnInit, OnDestroy {
     private roku: RokuService,
     private audioPlayer: AudioPlayerService,
     private router: Router,
-  ) {
-    this.proxyUrl = proxy.getProxyUrl();
-  }
+  ) {}
 
   get isPlaying(): boolean {
     return this.audioPlayer.isPlaying;
@@ -54,7 +51,6 @@ export class AudioComponent implements OnInit, OnDestroy {
   checkProxy(): void {
     this.checking = true;
     this.error = null;
-    this.proxy.setProxyUrl(this.proxyUrl);
     this.proxy.isAvailable().subscribe(available => {
       this.proxyAvailable = available;
       this.checking = false;
