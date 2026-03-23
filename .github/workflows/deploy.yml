@@ -33,7 +33,9 @@ jobs:
           aws-region: ap-southeast-2
 
       - name: Upload to S3
-        run: aws s3 sync app/dist/roku-remote/browser/ s3://${{ secrets.S3_BUCKET_NAME }} --delete
+        run: aws s3 sync app/dist/roku-remote/browser/ s3://rokuremote-pages-production --delete
 
       - name: Invalidate CloudFront cache
-        run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='rokuremote-pages-production.s3.ap-southeast-2.amazonaws.com'].Id" --output text)
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
