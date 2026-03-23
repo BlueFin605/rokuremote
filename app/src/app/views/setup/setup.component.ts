@@ -55,7 +55,8 @@ export class SetupComponent implements OnInit {
       next: (info) => {
         this.deviceInfo = info;
         this.loading = false;
-        setTimeout(() => this.router.navigate(['/remote']), 1000);
+        const dest = info.ecpEnabled ? '/apps' : '/remote';
+        setTimeout(() => this.router.navigate([dest]), 1000);
       },
       error: (err) => {
         this.loading = false;

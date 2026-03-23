@@ -7,6 +7,7 @@ export interface RokuDeviceInfo {
   name: string;
   model: string;
   supportsPrivateListening: boolean;
+  ecpEnabled: boolean;
 }
 
 export interface RokuApp {
@@ -188,6 +189,7 @@ export class RokuService {
       name: getText('friendly-device-name') || getText('default-device-name') || 'Roku',
       model: getText('model-name') || 'Unknown',
       supportsPrivateListening: getText('supports-private-listening') === 'true',
+      ecpEnabled: getText('ecp-setting-mode') !== 'limited',
     };
   }
 
