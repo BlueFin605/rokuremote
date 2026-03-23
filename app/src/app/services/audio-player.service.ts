@@ -4,11 +4,29 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class AudioPlayerService {
+  private static readonly STORAGE_KEY = 'audio-max-latency';
+  private static readonly DEFAULT_MAX_LATENCY = 0.15;
+
   private audioCtx: AudioContext | null = null;
   private decoder: any = null;
   private abortController: AbortController | null = null;
   private nextStartTime = 0;
   private _isPlaying = false;
+  private _maxLatency: number;
+
+  constructor() {
+    const stored = localStorage.getItem(AudioPlayerService.STORAGE_KEY);
+    this._maxLatency = stored ? parseFloat(stored) : AudioPlayerService.DEFAULT_MAX_LATENCY;
+  }
+
+  get maxLatency(): number {
+    return this._maxLatency;
+  }
+
+  set maxLatency(value: number) {
+    this._maxLatency = value;
+    localStorage.setItem(AudioPlayerService.STORAGE_KEY, value.toString());
+  }
 
   get isPlaying(): boolean {
     return this._isPlaying;
@@ -111,9 +129,16 @@ export class AudioPlayerService {
 
       // Schedule playback to maintain continuity
       const now = this.audioCtx.currentTime;
+      const maxLatency = this._maxLatency;
+
       if (this.nextStartTime < now) {
+        // Fell behind — catch up to now
         this.nextStartTime = now;
+      } else if (this.nextStartTime - now > maxLatency) {
+        // Too far ahead — drop back to reduce latency
+        this.nextStartTime = now + 0.02;
       }
+
       source.start(this.nextStartTime);
       this.nextStartTime += samplesDecoded / sampleRate;
     } catch {

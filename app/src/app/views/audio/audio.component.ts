@@ -35,6 +35,14 @@ export class AudioComponent implements OnInit, OnDestroy {
     return this.audioPlayer.isPlaying;
   }
 
+  get maxLatencyMs(): number {
+    return Math.round(this.audioPlayer.maxLatency * 1000);
+  }
+
+  onLatencyChange(ms: number): void {
+    this.audioPlayer.maxLatency = ms / 1000;
+  }
+
   ngOnInit(): void {
     this.checkProxy();
   }

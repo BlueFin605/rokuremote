@@ -47,6 +47,23 @@
       }
     </div>
 
+    <div class="latency-config">
+      <label for="max-latency">Audio Latency: {{ maxLatencyMs }}ms</label>
+      <input
+        id="max-latency"
+        type="range"
+        min="50"
+        max="500"
+        step="10"
+        [ngModel]="maxLatencyMs"
+        (ngModelChange)="onLatencyChange($event)"
+      />
+      <div class="range-labels">
+        <span>50ms</span>
+        <span>500ms</span>
+      </div>
+    </div>
+
     @if (error) {
       <div class="status-card error">
         <p>{{ error }}</p>
