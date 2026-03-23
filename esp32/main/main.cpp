@@ -1,5 +1,6 @@
 #include "wifi_manager.h"
 #include "http_server.h"
+#include "sdkconfig.h"
 
 #include "esp_log.h"
 #include "nvs_flash.h"

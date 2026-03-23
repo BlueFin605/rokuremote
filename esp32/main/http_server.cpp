@@ -9,6 +9,7 @@
 #include "esp_log.h"
 #include "cJSON.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <cstdio>
 #include <string>
@@ -32,6 +33,7 @@ static void set_cors_headers(httpd_req_t* req) {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "*");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Private-Network", "true");
 }
 
 static esp_err_t send_json(httpd_req_t* req, int status, const char* json) {
