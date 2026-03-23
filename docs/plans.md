@@ -34,7 +34,7 @@ All truth statements verified. Angular app in `app/`, builds clean, accessible f
 
 **Ancestors:** None (can run in parallel with Plan 1)
 
-**Note:** Mixed-content resolved by setting `ViewerProtocolPolicy.ALLOW_ALL` — user accesses the CloudFront URL over HTTP so local network requests to the proxy are not blocked. HTTPS is still available but not forced.
+**Note:** Mixed-content/CORS resolved two ways: (1) CloudFront `ViewerProtocolPolicy.ALLOW_ALL` so HTTP access works, and (2) the desktop proxy returns `Access-Control-Allow-Private-Network: true` so HTTPS access also works (Chrome Private Network Access). Both HTTP and HTTPS work from roku.bluefin605.com → localhost proxy.
 
 ### Truth Statements
 
