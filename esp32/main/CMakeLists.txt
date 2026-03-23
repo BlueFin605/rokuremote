@@ -17,4 +17,5 @@ idf_component_register(
         lwip
         esp_event
         esp_http_client
+        json
 )
