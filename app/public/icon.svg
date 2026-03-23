@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Remote body -->
+  <rect x="128" y="32" width="256" height="448" rx="80" ry="80" fill="#6c2dc7"/>
+  <rect x="144" y="48" width="224" height="416" rx="68" ry="68" fill="#7b3dd6" opacity="0.6"/>
+
+  <!-- D-pad circle -->
+  <circle cx="256" cy="200" r="90" fill="#1a1a2e"/>
+  <circle cx="256" cy="200" r="86" fill="none" stroke="#9b6de3" stroke-width="2" opacity="0.5"/>
+
+  <!-- D-pad arrows -->
+  <!-- Up -->
+  <polygon points="256,130 240,158 272,158" fill="#e0d0f7"/>
+  <!-- Down -->
+  <polygon points="256,270 240,242 272,242" fill="#e0d0f7"/>
+  <!-- Left -->
+  <polygon points="186,200 214,184 214,216" fill="#e0d0f7"/>
+  <!-- Right -->
+  <polygon points="326,200 298,184 298,216" fill="#e0d0f7"/>
+
+  <!-- OK button -->
+  <circle cx="256" cy="200" r="28" fill="#5a25a5"/>
+  <circle cx="256" cy="200" r="26" fill="#6c2dc7"/>
+  <text x="256" y="207" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="bold" fill="#fff">OK</text>
+
+  <!-- Bottom buttons row -->
+  <circle cx="200" cy="340" r="20" fill="#1a1a2e"/>
+  <circle cx="256" cy="340" r="20" fill="#1a1a2e"/>
+  <circle cx="312" cy="340" r="20" fill="#1a1a2e"/>
+
+  <!-- Back arrow -->
+  <polygon points="193,340 207,332 207,348" fill="#e0d0f7"/>
+  <!-- Home icon -->
+  <polygon points="256,328 244,338 244,352 268,352 268,338" fill="none" stroke="#e0d0f7" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Star/options -->
+  <text x="312" y="346" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" fill="#e0d0f7">*</text>
+
+  <!-- Wifi/audio indicator at top -->
+  <path d="M240,80 Q256,65 272,80" fill="none" stroke="#e0d0f7" stroke-width="3" stroke-linecap="round"/>
+  <path d="M232,72 Q256,52 280,72" fill="none" stroke="#e0d0f7" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+</svg>
