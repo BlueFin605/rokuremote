@@ -62,14 +62,15 @@ How it could be built. Contracts, architecture, verification. No implementation.
 
 ### First-Run Setup & Connection (Flow 0)
 
-- **Phase 1**: Manual IP entry. The user enters their Roku's IP once, it's saved in localStorage.
-- **Phase 3**: ESP32 provides SSDP auto-discovery (see Phase 3 section). Manual IP entry remains as fallback.
+- **Proxy URL**: Configurable via a collapsible "Proxy Settings" section on the setup page. Defaults to `http://roku-proxy.local:8080` (mDNS for ESP32). Users can override to any IP/port and reset to default. Saved in localStorage.
+- **Roku discovery**: If the proxy is reachable, SSDP auto-discovery via "Discover Roku Devices" button. Manual IP entry remains as fallback.
 - **Connection check**: On connect, attempt `GET /query/device-info`.
-  - Success → Roku is reachable and ECP is enabled. Save IP, show remote.
+  - Success with ECP enabled → Save IP, navigate to **app launcher** view (default landing page).
+  - Success with ECP limited → Save IP, navigate to **remote** view (Apps button hidden).
   - "Limited mode" error → Show setup instructions: *Settings > System > Advanced System Settings > Control by Mobile Apps > Network Access > Enabled*. Offer "Try Again".
   - Timeout/unreachable → Show "Roku not found at this IP" with option to re-enter.
   - Tip for finding IP → Show: *On your Roku: Settings > Network > About*.
-- **Persistence**: Save last-known Roku IP and device name in localStorage. On next open, try the saved IP first. If it fails, prompt for re-entry.
+- **Persistence**: Save last-known Roku IP, proxy URL, and ECP mode in localStorage. On next open, try the saved IP first. If it fails, prompt for re-entry.
 
 ### Remote Control Interface
 
@@ -117,11 +118,13 @@ All ECP requests are routed through the proxy at `GET/POST /roku/<path>?ip=<roku
 
 ### App Grid UI
 
-- Grid of tiles, each showing the app icon and name.
-- Tap a tile → `POST /roku/launch/<appId>?ip=<roku-ip>` (via proxy).
+- Responsive grid of tiles using CSS `auto-fill` — shows as many columns as fit the screen width (3 on phone, more on tablet/desktop, up to 960px max-width).
+- Each tile shows the app icon and name. The currently active app is highlighted.
+- Tap a tile → `POST /roku/launch/<appId>?ip=<roku-ip>` (via proxy). Stays on the app launcher (does not navigate away).
 - Search/filter bar at the top for quick lookup when the list is long.
 - Default sort: alphabetical by name (since ECP doesn't provide home screen order).
 - Drag-to-reorder for custom app ordering, persisted in localStorage. Reset to alphabetical available.
+- **ECP limited mode**: When Roku is in limited mode, the app launcher is inaccessible — the Apps button is hidden from the remote view and post-connect navigation goes to the remote view instead.
 
 ### Roku ECP Contracts (via proxy)
 
@@ -244,7 +247,7 @@ This means Phase 3 development doesn't require an ESP32 until the final stage. T
 
 - **Infrastructure (CDK)**: AWS infrastructure defined in CDK (C#), run manually to provision/update. Creates S3 bucket, CloudFront distribution, OAI/OAC, Route53 records (if custom domain), and any required IAM roles.
 - **Deployment (GitHub Actions)**: On push to main, GitHub Actions runs `ng build`, uploads to S3, and invalidates the CloudFront cache. Uses OIDC federation for AWS auth — no long-lived access keys. No manual deployment steps after initial CDK setup.
-- **Mixed-content**: CloudFront uses `ViewerProtocolPolicy.ALLOW_ALL` so the app can be accessed over HTTP, allowing the browser to make HTTP requests to the local proxy without mixed-content blocking.
+- **Mixed-content/CORS**: Resolved two ways: (1) CloudFront uses `ViewerProtocolPolicy.ALLOW_ALL` so HTTP access works, and (2) the proxy returns `Access-Control-Allow-Private-Network: true` so HTTPS access also works (Chrome Private Network Access). Both HTTP and HTTPS work from the deployed site to the local proxy.
 - **Monitoring**: CloudFront access logs for basic usage. No backend to monitor.
 - **The real test**: Open on phone, control the Roku, launch apps, listen to audio. This is a personal tool — production monitoring is "does it work when I use it."
 

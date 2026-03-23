@@ -9,7 +9,9 @@
   <div class="top-row">
     <button class="nav-btn" (click)="press('Back')">Back</button>
     <button class="nav-btn" (click)="press('Home')">Home</button>
-    <button class="nav-btn apps" (click)="openApps()">Apps</button>
+    @if (ecpEnabled) {
+      <button class="nav-btn apps" (click)="openApps()">Apps</button>
+    }
     <button class="nav-btn" (click)="press('PowerOff')">Power</button>
   </div>
 

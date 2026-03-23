@@ -16,6 +16,10 @@ export class RemoteComponent implements OnInit, OnDestroy {
   private volumeRepeatTimer: ReturnType<typeof setInterval> | null = null;
   private sub?: Subscription;
 
+  get ecpEnabled(): boolean {
+    return this.roku.ecpEnabled;
+  }
+
   constructor(
     private roku: RokuService,
     private router: Router,

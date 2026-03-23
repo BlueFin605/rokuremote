@@ -18,10 +18,10 @@ Processes that must exist to make the north star real. Actors, stages, failure m
 
 1. User starts the proxy (desktop app or ESP32) on the same network as the Roku.
 2. User opens the remote in their phone's browser.
-3. The remote prompts for the proxy URL (defaulting to a sensible value). The proxy URL is saved in localStorage.
+3. The remote uses the configured proxy URL (defaulting to `http://roku-proxy.local:8080` for mDNS-enabled ESP32). The proxy URL is saved in localStorage and configurable via a collapsible "Proxy Settings" section on the setup page.
 4. If the proxy is reachable, the user can discover Roku devices automatically via the "Discover" button (SSDP via proxy). Otherwise, the user enters the Roku's IP manually.
 5. The remote attempts `GET /query/device-info` (via the proxy) on the entered/discovered IP.
-6. **If it succeeds**: Roku is reachable and ECP is enabled. Save IP, proceed to remote.
+6. **If it succeeds**: Roku is reachable and ECP is enabled. Save IP. If ECP is fully enabled, proceed to app launcher view. If ECP is in limited mode, proceed to remote view (apps view is hidden).
 7. **If it fails with "Limited mode" error**: Show clear instructions to the user:
    - "Your Roku has External Control set to Limited. To use this remote:"
    - On your TV: **Settings > System > Advanced System Settings > Control by Mobile Apps > Network Access > Enabled**
@@ -91,12 +91,12 @@ Since Roku OS 14.1, ECP defaults to Limited mode. Every third-party remote (Home
 
 ### Happy Path
 
-1. User navigates to the app launcher view.
+1. After connecting, the user lands on the app launcher view (the default view when ECP is fully enabled).
 2. The remote fetches the list of installed apps and their icons from the Roku.
-3. Apps are displayed as a grid of tiles with icons and names.
+3. Apps are displayed as a responsive grid of tiles with icons and names (auto-fills columns based on screen width).
 4. User taps an app tile.
 5. The Roku launches that app. The TV switches to it.
-6. The remote returns to (or stays on) the control view so the user can navigate within the app.
+6. The app is highlighted as active in the grid. The user stays on the app launcher view.
 
 ### Failure Modes
 
@@ -124,7 +124,7 @@ Since Roku OS 14.1, ECP defaults to Limited mode. Every third-party remote (Home
 
 ### Happy Path
 
-1. User navigates to the Audio view and configures the proxy URL (if not already set).
+1. User navigates to the Audio view (proxy URL is already configured on the setup page).
 2. User taps "Start Listening".
 3. The phone tells the proxy to start a private listening session with the Roku (`POST /start?roku=<ip>`).
 4. The proxy authenticates with the Roku via WebSocket on `/ecp-session`.

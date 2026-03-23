@@ -59,19 +59,19 @@ All truth statements verified. Angular app in `app/`, builds clean, accessible f
 
 ## ~~Plan 3: Connect & Setup~~ ✅ COMPLETE
 
-All truth statements verified. Setup view with IP entry, Limited mode detection, localStorage persistence, auto-reconnect.
+All truth statements verified. Setup view with IP entry, Limited mode detection, localStorage persistence, auto-reconnect. Proxy URL configurable via collapsible "Proxy Settings" section (default: `http://roku-proxy.local:8080` for ESP32 mDNS, with reset-to-default button).
 
 ---
 
 ## ~~Plan 4: Remote Control~~ ✅ COMPLETE
 
-All truth statements verified. D-pad, playback, volume (hold-to-repeat), text input, disconnect banner. Needs real Roku to verify end-to-end.
+All truth statements verified. D-pad, playback, volume (hold-to-repeat), text input, disconnect banner. Apps button conditionally hidden when ECP is in limited mode. Needs real Roku to verify end-to-end.
 
 ---
 
 ## ~~Plan 5: App Launcher~~ ✅ COMPLETE
 
-All truth statements verified. App grid with icons, search/filter, tap to launch, drag-to-reorder with localStorage persistence. Needs real Roku to verify end-to-end.
+All truth statements verified. Responsive app grid (auto-fill columns based on screen width), icons, search/filter, tap to launch (stays on apps view), drag-to-reorder with localStorage persistence. App launcher is the default post-connect view when ECP is fully enabled; hidden when ECP is in limited mode. Needs real Roku to verify end-to-end.
 
 ---
 
@@ -93,9 +93,10 @@ All code is implemented and tested against the mock Roku. Two truth statements r
 - [x] **VERIFIED AGAINST MOCK:** Mock Roku sends RTP Opus packets to the proxy. Needs real Roku to confirm actual audio.
 - [x] The proxy serves an HTTP API: `POST /start?roku=<ip>`, `POST /stop`, `GET /status`, `GET /audio`.
 - [x] The proxy serves an SSDP discovery endpoint: `GET /discover`.
-- [x] The Angular app has a "Private Listening" button that starts/stops the proxy and auto-plays audio.
+- [x] The Angular app has a "Private Listening" button that starts/stops the proxy and auto-plays audio. Audio view reads the globally configured proxy URL (set on the setup page).
 - [x] Browser Opus decoding implemented via `opus-decoder` npm package (Wasm). Streams from `/audio`, decodes frames, plays via Web Audio API with scheduled playback.
 - [x] Discovery wired into setup view. When proxy is available, "Discover Roku Devices" button appears above manual IP entry.
+- [x] Proxy returns `Access-Control-Allow-Private-Network: true` header for Chrome PNA compliance (public origin → localhost/local network).
 - [ ] **NEEDS REAL ROKU:** Audio plays through the phone's speaker/headphones with acceptable quality.
 - [x] Stopping private listening cleanly tears down WebSocket, RTP, and audio playback.
 
