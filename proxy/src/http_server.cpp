@@ -81,11 +81,13 @@ HttpServer::~HttpServer() {
 void HttpServer::setup_routes() {
     auto& srv = impl_->server;
 
-    // CORS headers for all responses
+    // CORS headers for all responses (including Private Network Access for
+    // browsers that enforce PNA when a public origin calls localhost)
     srv.set_default_headers({
         {"Access-Control-Allow-Origin", "*"},
         {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
         {"Access-Control-Allow-Headers", "*"},
+        {"Access-Control-Allow-Private-Network", "true"},
     });
 
     // Preflight
@@ -168,6 +170,7 @@ void HttpServer::setup_routes() {
 
         std::string path = "/" + req.matches[1].str();
         httplib::Client client(roku_ip, 8060);
+        client.set_address_family(AF_INET);
         client.set_connection_timeout(3);
         client.set_read_timeout(3);
 
@@ -193,6 +196,7 @@ void HttpServer::setup_routes() {
 
         std::string path = "/" + req.matches[1].str();
         httplib::Client client(roku_ip, 8060);
+        client.set_address_family(AF_INET);
         client.set_connection_timeout(3);
         client.set_read_timeout(3);
 
