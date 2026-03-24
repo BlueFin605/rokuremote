@@ -41,7 +41,8 @@ export class RokuService {
 
   private rokuUrl(path: string, ip?: string): string {
     const proxyUrl = this.proxy.getProxyUrl();
-    return `${proxyUrl}/roku/${path}?ip=${ip ?? this.rokuIp}`;
+    const base = proxyUrl ? `${proxyUrl}/api` : '/api';
+    return `${base}/roku/${path}?ip=${ip ?? this.rokuIp}`;
   }
 
   connectionLost$ = this.connectionError.asObservable();

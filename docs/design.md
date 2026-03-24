@@ -257,6 +257,66 @@ No infrastructure changes needed. The manifest and service worker are static ass
 
 ---
 
+## Phase 5: ESP32 Self-Hosted UI
+
+**Supports:** North Star #11-13, resolves HTTPS mixed-content limitation for PWA
+
+### Problem
+
+The CloudFront-hosted app runs over HTTPS, but the ESP32 proxy runs HTTP on the local network. Browsers block mixed-content requests (HTTPS page → HTTP API), and iOS forces HTTPS for home screen PWAs. This prevents the installed PWA from reaching the local proxy.
+
+### Solution: Same-Origin Serving
+
+The ESP32 serves both the Angular UI and the API on the same HTTP origin (port 8080). All requests are same-origin — no CORS, no mixed content, no PNA restrictions.
+
+### Embedding Strategy
+
+The Angular production build (~270KB gzipped) is embedded directly in the ESP32 firmware binary via CMake `EMBED_FILES`. No filesystem (SPIFFS/LittleFS) required.
+
+| Advantage | Why |
+|-----------|-----|
+| Atomic updates | Web app updates with firmware — no version mismatch |
+| No filesystem overhead | No wear-leveling, mount logic, or corruption risk |
+| Gzip passthrough | Pre-compressed files served with `Content-Encoding: gzip` — browser decompresses |
+| Simplicity | No runtime file I/O, just memory-mapped data |
+
+### Route Structure
+
+API routes move under `/api/` to separate them from static file serving:
+
+| Route | Handler |
+|-------|---------|
+| `/api/discover`, `/api/start`, `/api/stop`, `/api/status`, `/api/audio` | Existing proxy API handlers |
+| `/api/roku/*` | ECP forwarding |
+| `/*.js`, `/*.css`, `/icons/*` | Embedded static files |
+| `/` and `/*` fallback | `index.html` (SPA routing) |
+
+### Angular Dual-Mode
+
+The app supports two serving modes with no code changes:
+
+| Mode | Proxy URL | API paths | Use case |
+|------|-----------|-----------|----------|
+| Same-origin (ESP32) | `""` (empty) | `/api/...` (relative) | Production — served from ESP32 |
+| Cross-origin (CloudFront) | `http://192.168.x.x:8080` | `http://192.168.x.x:8080/api/...` (absolute) | Development or CloudFront-hosted fallback |
+
+### Service Worker
+
+Disabled for the ESP32 build — service workers require HTTPS on non-localhost origins. A separate Angular build configuration (`esp32`) produces a production build without service worker files. The `manifest.webmanifest` is retained for "Add to Home Screen" support where browsers allow it over HTTP.
+
+### Build Pipeline
+
+```
+ng build --configuration esp32
+    → prepare_web.sh (gzip text assets, generate CMake embed list)
+        → idf.py build (firmware includes embedded web files)
+            → flash to ESP32
+```
+
+The CloudFront deployment pipeline remains unchanged — the `esp32` build is an additional output, not a replacement.
+
+---
+
 ## Verification
 
 ### How do I know it works on my machine?
