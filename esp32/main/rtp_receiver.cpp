@@ -21,10 +21,16 @@ static const uint32_t CVER_VALUE = 0x30303032; // "0002"
 static const uint32_t VDLY_VALUE = 200000;    // 200ms sync delay
 static const int RTCP_APP_PORT = 6971;
 
-RtpReceiver::RtpReceiver(int port) : port_(port) {}
+RtpReceiver::RtpReceiver(int port) : port_(port) {
+    task_events_ = xEventGroupCreate();
+}
 
 RtpReceiver::~RtpReceiver() {
     stop();
+    if (task_events_) {
+        vEventGroupDelete(task_events_);
+        task_events_ = nullptr;
+    }
 }
 
 void RtpReceiver::set_rtcp_target(const std::string& roku_ip, int rtcp_port) {
@@ -33,12 +39,16 @@ void RtpReceiver::set_rtcp_target(const std::string& roku_ip, int rtcp_port) {
 }
 
 void RtpReceiver::recv_task_fn(void* arg) {
-    static_cast<RtpReceiver*>(arg)->recv_loop();
+    auto* self = static_cast<RtpReceiver*>(arg);
+    self->recv_loop();
+    xEventGroupSetBits(self->task_events_, RECV_TASK_DONE);
     vTaskDelete(nullptr);
 }
 
 void RtpReceiver::rtcp_task_fn(void* arg) {
-    static_cast<RtpReceiver*>(arg)->rtcp_loop();
+    auto* self = static_cast<RtpReceiver*>(arg);
+    self->rtcp_loop();
+    xEventGroupSetBits(self->task_events_, RTCP_TASK_DONE);
     vTaskDelete(nullptr);
 }
 
@@ -73,11 +83,12 @@ void RtpReceiver::start(FrameCallback on_frame, void* ctx) {
     packets_received_ = 0;
     last_seq_ = 0;
     ssrc_ = 0;
+    xEventGroupClearBits(task_events_, RECV_TASK_DONE | RTCP_TASK_DONE);
 
-    xTaskCreate(recv_task_fn, "rtp_recv", 4096, this, 5, &recv_task_);
+    xTaskCreate(recv_task_fn, "rtp_recv", 8192, this, 5, &recv_task_);
 
     if (!rtcp_target_ip_.empty()) {
-        xTaskCreate(rtcp_task_fn, "rtcp_send", 4096, this, 4, &rtcp_task_);
+        xTaskCreate(rtcp_task_fn, "rtcp_send", 8192, this, 4, &rtcp_task_);
         ESP_LOGI(TAG, "RTCP sender started -> %s:%d", rtcp_target_ip_.c_str(), rtcp_target_port_);
     }
 
@@ -214,6 +225,9 @@ void RtpReceiver::rtcp_loop() {
     // Wait 1 second for SSRC to stabilize
     vTaskDelay(pdMS_TO_TICKS(1000));
 
+    int handshake_attempts = 0;
+    static const int MAX_HANDSHAKE_ATTEMPTS = 25; // 25 * 200ms = 5 seconds
+
     auto check_app_responses = [&]() {
         if (app_fd < 0) return;
         uint8_t buf[256];
@@ -264,6 +278,14 @@ void RtpReceiver::rtcp_loop() {
 
     while (running_) {
         if (!handshake_done) {
+            handshake_attempts++;
+            if (handshake_attempts > MAX_HANDSHAKE_ATTEMPTS) {
+                ESP_LOGW(TAG, "RTCP handshake timed out after %d attempts, proceeding anyway",
+                         handshake_attempts);
+                handshake_done = true;
+                continue;
+            }
+
             if (!vdly_sent) {
                 build_app_packet(pkt, 0, VDLY_NAME, vdly_value);
                 sendto(socket_fd_, pkt, 16, 0,
@@ -313,17 +335,24 @@ void RtpReceiver::rtcp_loop() {
 }
 
 void RtpReceiver::stop() {
+    if (!running_) return;
     running_ = false;
 
-    // Wait for tasks to finish
-    if (recv_task_) {
-        vTaskDelay(pdMS_TO_TICKS(200));
-        recv_task_ = nullptr;
+    // Wait for tasks to signal completion (up to 2 seconds)
+    EventBits_t wait_bits = 0;
+    if (recv_task_) wait_bits |= RECV_TASK_DONE;
+    if (rtcp_task_) wait_bits |= RTCP_TASK_DONE;
+
+    if (wait_bits) {
+        EventBits_t result = xEventGroupWaitBits(
+            task_events_, wait_bits, pdTRUE, pdTRUE, pdMS_TO_TICKS(2000));
+        if ((result & wait_bits) != wait_bits) {
+            ESP_LOGW(TAG, "Tasks did not exit cleanly within timeout");
+        }
     }
-    if (rtcp_task_) {
-        vTaskDelay(pdMS_TO_TICKS(300));
-        rtcp_task_ = nullptr;
-    }
+
+    recv_task_ = nullptr;
+    rtcp_task_ = nullptr;
 
     if (socket_fd_ >= 0) {
         close(socket_fd_);

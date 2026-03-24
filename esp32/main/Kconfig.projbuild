@@ -14,7 +14,7 @@ menu "Roku Proxy Configuration"
 
     config PROXY_HTTP_PORT
         int "HTTP API Port"
-        default 8080
+        default 80
         help
             Port for the HTTP API server.
 

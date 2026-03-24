@@ -71,37 +71,73 @@ The proxy exposes these endpoints:
 
 ## ESP32 Proxy
 
-The ESP32 firmware runs the same proxy on a microcontroller — plug it in, connect to Wi-Fi, and it's always available.
+The ESP32 firmware runs the same proxy on a microcontroller — plug it in, connect to Wi-Fi, and it's always available. It advertises itself as `roku-proxy.local` via mDNS, so the web app finds it automatically.
 
-### Prerequisites
+### Flash the Firmware
 
-- [ESP-IDF v5.x](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/) installed and sourced
-- An ESP32 dev board connected via USB
+**Option A: Pre-built firmware (no toolchain needed)**
 
-### Configure
+Download the `roku-proxy-esp32` artifact from the latest [Actions build](https://github.com/deanmitchell/RokuRemote/actions), then flash:
+
+```bash
+pip install esptool    # if not already installed
+
+esptool.py --chip esp32 -p /dev/tty.usbserial-0001 write_flash \
+  0x1000  bootloader.bin \
+  0x8000  partition-table.bin \
+  0x10000 roku-proxy-esp32.bin
+```
+
+**Option B: Build locally with ESP-IDF**
+
+Requires [ESP-IDF v5.x](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/).
 
 ```bash
 cd esp32
-idf.py set-target esp32    # run once (or esp32s3, esp32c3, etc.)
-idf.py menuconfig
+idf.py set-target esp32
+idf.py build
+idf.py -p /dev/tty.usbserial-0001 flash
 ```
 
-In menuconfig, go to **Roku Proxy Configuration** and set:
+### Wi-Fi Setup
 
-| Setting | Default | Description |
-|---|---|---|
-| Wi-Fi SSID | `YourSSID` | Your Wi-Fi network |
-| Wi-Fi Password | `YourPassword` | Your Wi-Fi password |
-| HTTP API Port | `8080` | Port the app connects to |
-| RTP Receive Port | `6970` | UDP port for Roku audio |
-
-### Build & Flash
+On first boot the ESP32 prompts for Wi-Fi credentials over the USB serial connection. Open a serial monitor:
 
 ```bash
-idf.py -p /dev/tty.usbserial-0001 flash monitor
+screen /dev/tty.usbserial-0001 115200
 ```
 
-Once connected, the serial output shows the ESP32's IP address. Use that as the proxy URL in the app.
+You'll see:
+
+```
+=================================
+  Roku Proxy — Wi-Fi Setup
+=================================
+Wi-Fi SSID: MyNetwork
+Wi-Fi Password: MyPassword
+```
+
+Type your SSID and password. They're saved to flash and persist across reboots — you only need to do this once.
+
+To re-enter credentials, erase the saved config and reboot:
+
+```bash
+esptool.py --chip esp32 -p /dev/tty.usbserial-0001 erase_region 0x9000 0x6000
+```
+
+Then open the serial monitor again and the ESP32 will re-prompt.
+
+### Verify
+
+Once connected, the serial output shows:
+
+```
+Local IP: 192.168.1.x
+mDNS hostname: roku-proxy.local
+Roku proxy ready on http://roku-proxy.local:8080
+```
+
+Open `https://roku.bluefin605.com` on your phone — the app defaults to `http://roku-proxy.local:8080` and should connect automatically.
 
 ### Flash from Pre-Built Binary
 
@@ -120,9 +156,10 @@ Replace `COM3` with your serial port (`/dev/ttyUSB0` on Linux, `/dev/tty.usbseri
 
 | Problem | Fix |
 |---|---|
-| `idf.py: command not found` | Source ESP-IDF: `. $HOME/esp/esp-idf/export.sh` |
-| Board not detected | Check USB cable (some are charge-only) and serial driver |
-| Wi-Fi reconnecting | Check credentials in menuconfig; ESP32 only supports 2.4 GHz |
+| No serial prompt after flashing | Press the EN/Reset button on the board |
+| Board not detected | Check USB cable (some are charge-only) and install serial driver |
+| Wi-Fi won't connect | ESP32 only supports 2.4 GHz Wi-Fi, not 5 GHz |
+| `roku-proxy.local` not resolving | Try the IP address shown in serial output instead |
 
 ## Infrastructure
 

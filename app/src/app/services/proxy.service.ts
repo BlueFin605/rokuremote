@@ -18,11 +18,27 @@ export interface ProxyStatus {
 })
 export class ProxyService {
   private static readonly STORAGE_KEY = 'proxy-url';
-  private static readonly DEFAULT_URL = 'http://roku-proxy.local:8080';
+  private static readonly DEFAULT_URL = 'http://roku-proxy.local';
   private proxyUrl: string;
 
   constructor(private http: HttpClient) {
-    this.proxyUrl = localStorage.getItem(ProxyService.STORAGE_KEY) || ProxyService.DEFAULT_URL;
+    this.proxyUrl = localStorage.getItem(ProxyService.STORAGE_KEY) ?? ProxyService.detectDefaultUrl();
+  }
+
+  /** If served from the ESP32 (same-origin API available), use relative paths. Otherwise use mDNS default. */
+  private static detectDefaultUrl(): string {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      // Same-origin when served from ESP32: mDNS name or local IP on port 80
+      if (host === 'roku-proxy.local' || (host.match(/^192\.168\./) && window.location.port === '')) {
+        return '';
+      }
+    }
+    return ProxyService.DEFAULT_URL;
+  }
+
+  private apiBase(): string {
+    return this.proxyUrl ? `${this.proxyUrl}/api` : '/api';
   }
 
   getProxyUrl(): string {
@@ -39,11 +55,11 @@ export class ProxyService {
   }
 
   resetToDefault(): void {
-    this.setProxyUrl(ProxyService.DEFAULT_URL);
+    this.setProxyUrl(ProxyService.detectDefaultUrl());
   }
 
   isAvailable(): Observable<boolean> {
-    return this.http.get<ProxyStatus>(`${this.proxyUrl}/status`).pipe(
+    return this.http.get<ProxyStatus>(`${this.apiBase()}/status`).pipe(
       timeout(2000),
       map(() => true),
       catchError(() => of(false)),
@@ -51,30 +67,30 @@ export class ProxyService {
   }
 
   discover(): Observable<ProxyDevice[]> {
-    return this.http.get<ProxyDevice[]>(`${this.proxyUrl}/discover`).pipe(
+    return this.http.get<ProxyDevice[]>(`${this.apiBase()}/discover`).pipe(
       timeout(5000),
     );
   }
 
   startListening(rokuIp: string): Observable<void> {
-    return this.http.post<void>(`${this.proxyUrl}/start?roku=${rokuIp}`, null).pipe(
+    return this.http.post<void>(`${this.apiBase()}/start?roku=${rokuIp}`, null).pipe(
       timeout(5000),
     );
   }
 
   stopListening(): Observable<void> {
-    return this.http.post<void>(`${this.proxyUrl}/stop`, null).pipe(
+    return this.http.post<void>(`${this.apiBase()}/stop`, null).pipe(
       timeout(3000),
     );
   }
 
   getStatus(): Observable<ProxyStatus> {
-    return this.http.get<ProxyStatus>(`${this.proxyUrl}/status`).pipe(
+    return this.http.get<ProxyStatus>(`${this.apiBase()}/status`).pipe(
       timeout(3000),
     );
   }
 
   getAudioStreamUrl(): string {
-    return `${this.proxyUrl}/audio`;
+    return `${this.apiBase()}/audio`;
   }
 }

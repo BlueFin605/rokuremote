@@ -55,7 +55,7 @@ describe('RemoteComponent', () => {
     tick();
 
     const req = httpMock.expectOne(r =>
-      r.url === 'http://roku-proxy.local:8080/roku/keypress/Home?ip=192.168.1.100' && r.method === 'POST'
+      r.url === 'http://roku-proxy.local/api/roku/keypress/Home?ip=192.168.1.100' && r.method === 'POST'
     );
     req.flush('');
     tick(100);
@@ -68,11 +68,11 @@ describe('RemoteComponent', () => {
     expect(component.textInput).toBe('');
     tick();
 
-    const req1 = httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/roku/keypress/Lit_a?ip=192.168.1.100');
+    const req1 = httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/keypress/Lit_a?ip=192.168.1.100');
     req1.flush('');
     tick(100);
 
-    const req2 = httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/roku/keypress/Lit_b?ip=192.168.1.100');
+    const req2 = httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/keypress/Lit_b?ip=192.168.1.100');
     req2.flush('');
     tick(100);
   }));

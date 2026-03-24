@@ -8,7 +8,9 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "cJSON.h"
+#include "lwip/sockets.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <cstdio>
 #include <string>
@@ -32,6 +34,7 @@ static void set_cors_headers(httpd_req_t* req) {
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "*");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Private-Network", "true");
 }
 
 static esp_err_t send_json(httpd_req_t* req, int status, const char* json) {
@@ -64,11 +67,11 @@ static std::string get_query_param(httpd_req_t* req, const char* key) {
     return std::string(val);
 }
 
-// Extract the path after /roku/ from the URI (before the query string)
+// Extract the path after /api/roku/ from the URI (before the query string)
 static std::string get_roku_path(httpd_req_t* req) {
     const char* uri = req->uri;
-    // Skip "/roku/"
-    const char* path_start = uri + 6;
+    // Skip "/api/roku/"
+    const char* path_start = uri + 10;
     const char* query = strchr(path_start, '?');
     if (query) {
         return "/" + std::string(path_start, query - path_start);
@@ -76,14 +79,91 @@ static std::string get_roku_path(httpd_req_t* req) {
     return "/" + std::string(path_start);
 }
 
-static void stop_session() {
-    if (g_session) {
-        g_session->stop();
-        g_session.reset();
+// ---- Static File Serving ----
+
+#include "web_files.h"
+
+static const char* get_content_type(const char* uri) {
+    const char* ext = strrchr(uri, '.');
+    if (!ext) return "application/octet-stream";
+    if (strcmp(ext, ".html") == 0) return "text/html";
+    if (strcmp(ext, ".js") == 0) return "application/javascript";
+    if (strcmp(ext, ".css") == 0) return "text/css";
+    if (strcmp(ext, ".json") == 0) return "application/json";
+    if (strcmp(ext, ".webmanifest") == 0) return "application/manifest+json";
+    if (strcmp(ext, ".svg") == 0) return "image/svg+xml";
+    if (strcmp(ext, ".png") == 0) return "image/png";
+    if (strcmp(ext, ".ico") == 0) return "image/x-icon";
+    return "application/octet-stream";
+}
+
+static bool has_hash_in_name(const char* uri) {
+    // Hashed filenames look like: main-35MFZUI3.js, styles-IC22XOQN.css
+    const char* dot = strrchr(uri, '.');
+    if (!dot) return false;
+    const char* dash = dot;
+    while (dash > uri && *dash != '-' && *dash != '/') dash--;
+    return *dash == '-' && (dot - dash) > 4;
+}
+
+static esp_err_t static_file_handler(httpd_req_t* req) {
+    const char* uri = req->uri;
+
+    // Don't serve static files for API routes
+    if (strncmp(uri, "/api/", 5) == 0) {
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Not found");
+        return ESP_FAIL;
     }
+
+    // Look up the file in the embedded web files table
+    const WebFile* file = nullptr;
+    for (int i = 0; i < web_file_count; i++) {
+        if (strcmp(uri, web_files[i].uri) == 0) {
+            file = &web_files[i];
+            break;
+        }
+    }
+
+    // SPA fallback: serve index.html for unrecognised paths
+    if (!file) {
+        for (int i = 0; i < web_file_count; i++) {
+            if (strcmp(web_files[i].uri, "/index.html") == 0) {
+                file = &web_files[i];
+                break;
+            }
+        }
+    }
+
+    if (!file) {
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "Not found");
+        return ESP_FAIL;
+    }
+
+    httpd_resp_set_type(req, file->content_type);
+    if (file->gzipped) {
+        httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+    }
+
+    // Cache headers: immutable for hashed files, no-cache for index/manifest
+    if (has_hash_in_name(uri)) {
+        httpd_resp_set_hdr(req, "Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+        httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    }
+
+    return httpd_resp_send(req, reinterpret_cast<const char*>(file->data), file->size);
+}
+
+static void stop_session() {
+    // Stop receiver first — its tasks exit quickly via event groups.
+    // Session WebSocket close can take longer, so do it second.
     if (g_receiver) {
         g_receiver->stop();
         g_receiver.reset();
+    }
+    if (g_session) {
+        g_session->stop();
+        g_session.reset();
     }
     g_current_state = roku::SessionState::Idle;
     g_last_error[0] = '\0';
@@ -177,17 +257,25 @@ static esp_err_t audio_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "application/octet-stream");
     set_cors_headers(req);
 
+    // Disable Nagle — send audio chunks immediately instead of buffering
+    int sockfd = httpd_req_to_sockfd(req);
+    if (sockfd >= 0) {
+        int flag = 1;
+        setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    }
+
+    // Combined buffer: 2-byte length prefix + max frame data in one write
+    uint8_t send_buf[2 + sizeof(AudioFrame::data)];
     AudioFrame frame;
+
     while (true) {
-        uint16_t len = g_audio_buffer.pop(frame, 1000);
+        uint16_t len = g_audio_buffer.pop(frame, 200);
         if (len > 0) {
-            // 2-byte big-endian length + frame data
-            uint8_t prefix[2] = {
-                static_cast<uint8_t>((len >> 8) & 0xFF),
-                static_cast<uint8_t>(len & 0xFF)
-            };
-            if (httpd_resp_send_chunk(req, reinterpret_cast<char*>(prefix), 2) != ESP_OK) break;
-            if (httpd_resp_send_chunk(req, reinterpret_cast<char*>(frame.data), len) != ESP_OK) break;
+            // Pack prefix + frame into single buffer to avoid two TCP writes
+            send_buf[0] = static_cast<uint8_t>((len >> 8) & 0xFF);
+            send_buf[1] = static_cast<uint8_t>(len & 0xFF);
+            memcpy(send_buf + 2, frame.data, len);
+            if (httpd_resp_send_chunk(req, reinterpret_cast<char*>(send_buf), 2 + len) != ESP_OK) break;
         } else {
             // Keepalive — zero-length frame
             uint8_t zero[2] = {0, 0};
@@ -306,12 +394,13 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port;
-    config.stack_size = 8192;
-    config.max_uri_handlers = 12;
+    config.stack_size = 10240;
+    config.max_uri_handlers = 20;
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.lru_purge_enable = true;
     // Allow enough open sockets for /audio streaming + other requests
-    config.max_open_sockets = 4;
+    // Audio stream holds 1 socket long-term; need headroom for status/stop/roku proxy
+    config.max_open_sockets = 7;
 
     esp_err_t err = httpd_start(&g_server, &config);
     if (err != ESP_OK) {
@@ -320,6 +409,7 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
     }
 
     // Register routes — order matters for wildcard matching
+    // API routes registered first (more specific), then static file wildcard last
 
     // OPTIONS preflight (wildcard)
     httpd_uri_t options_uri = {
@@ -330,68 +420,77 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
     };
     httpd_register_uri_handler(g_server, &options_uri);
 
-    // GET /discover
+    // GET /api/discover
     httpd_uri_t discover_uri = {
-        .uri = "/discover",
+        .uri = "/api/discover",
         .method = HTTP_GET,
         .handler = discover_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &discover_uri);
 
-    // POST /start
+    // POST /api/start
     httpd_uri_t start_uri = {
-        .uri = "/start",
+        .uri = "/api/start",
         .method = HTTP_POST,
         .handler = start_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &start_uri);
 
-    // POST /stop
+    // POST /api/stop
     httpd_uri_t stop_uri = {
-        .uri = "/stop",
+        .uri = "/api/stop",
         .method = HTTP_POST,
         .handler = stop_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &stop_uri);
 
-    // GET /status
+    // GET /api/status
     httpd_uri_t status_uri = {
-        .uri = "/status",
+        .uri = "/api/status",
         .method = HTTP_GET,
         .handler = status_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &status_uri);
 
-    // GET /audio
+    // GET /api/audio
     httpd_uri_t audio_uri = {
-        .uri = "/audio",
+        .uri = "/api/audio",
         .method = HTTP_GET,
         .handler = audio_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &audio_uri);
 
-    // GET /roku/* — forward to Roku ECP
+    // GET /api/roku/* — forward to Roku ECP
     httpd_uri_t roku_get_uri = {
-        .uri = "/roku/*",
+        .uri = "/api/roku/*",
         .method = HTTP_GET,
         .handler = roku_get_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &roku_get_uri);
 
-    // POST /roku/* — forward to Roku ECP
+    // POST /api/roku/* — forward to Roku ECP
     httpd_uri_t roku_post_uri = {
-        .uri = "/roku/*",
+        .uri = "/api/roku/*",
         .method = HTTP_POST,
         .handler = roku_post_handler,
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &roku_post_uri);
+
+    // GET /* — static file serving (SPA fallback)
+    httpd_uri_t static_uri = {
+        .uri = "/*",
+        .method = HTTP_GET,
+        .handler = static_file_handler,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(g_server, &static_uri);
 
     ESP_LOGI(TAG, "HTTP server started on port %d", port);
 }

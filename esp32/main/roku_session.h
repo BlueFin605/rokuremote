@@ -2,6 +2,7 @@
 
 #include <string>
 #include <cstdint>
+#include "esp_event.h"
 
 namespace roku {
 

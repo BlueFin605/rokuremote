@@ -7,6 +7,14 @@
 # Obsidian
 .obsidian/
 
+#flash files
+roku-proxy-esp32/
+
+# ESP32 generated web files (built by prepare_web.sh)
+esp32/main/web/
+esp32/main/web_files_gen.h
+esp32/web_embed.cmake
+
 # System files
 .DS_Store
 Thumbs.db

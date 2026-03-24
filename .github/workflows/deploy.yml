@@ -1,4 +1,4 @@
-name: Deploy to S3/CloudFront
+name: Build & Deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-web:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,3 +39,42 @@ jobs:
         run: |
           DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='rokuremote-pages-production.s3.ap-southeast-2.amazonaws.com'].Id" --output text)
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+
+  build-esp32:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install app dependencies
+        run: npm ci
+        working-directory: app
+
+      - name: Build Angular app for ESP32
+        run: npx ng build --configuration esp32
+        working-directory: app
+
+      - name: Prepare web files for embedding
+        run: ./esp32/scripts/prepare_web.sh
+
+      - name: Build ESP32 firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3
+          target: esp32
+          path: esp32
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: roku-proxy-esp32
+          path: |
+            esp32/build/roku-proxy-esp32.bin
+            esp32/build/bootloader/bootloader.bin
+            esp32/build/partition_table/partition-table.bin
