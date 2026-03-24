@@ -79,13 +79,15 @@ static std::string get_roku_path(httpd_req_t* req) {
 }
 
 static void stop_session() {
-    if (g_session) {
-        g_session->stop();
-        g_session.reset();
-    }
+    // Stop receiver first — its tasks exit quickly via event groups.
+    // Session WebSocket close can take longer, so do it second.
     if (g_receiver) {
         g_receiver->stop();
         g_receiver.reset();
+    }
+    if (g_session) {
+        g_session->stop();
+        g_session.reset();
     }
     g_current_state = roku::SessionState::Idle;
     g_last_error[0] = '\0';
@@ -313,7 +315,8 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.lru_purge_enable = true;
     // Allow enough open sockets for /audio streaming + other requests
-    config.max_open_sockets = 4;
+    // Audio stream holds 1 socket long-term; need headroom for status/stop/roku proxy
+    config.max_open_sockets = 7;
 
     esp_err_t err = httpd_start(&g_server, &config);
     if (err != ESP_OK) {

@@ -61,12 +61,16 @@ void Session::handle_message(const char* data, int len) {
         cJSON_AddStringToObject(reply, "param-response", response.c_str());
 
         char* json_str = cJSON_PrintUnformatted(reply);
-        esp_websocket_client_send_text(
+        int ret = esp_websocket_client_send_text(
             static_cast<esp_websocket_client_handle_t>(ws_client_),
-            json_str, strlen(json_str), portMAX_DELAY);
+            json_str, strlen(json_str), pdMS_TO_TICKS(5000));
         free(json_str);
         cJSON_Delete(reply);
-        ESP_LOGI(TAG, "Sent auth response");
+        if (ret < 0) {
+            ESP_LOGE(TAG, "Failed to send auth response");
+        } else {
+            ESP_LOGI(TAG, "Sent auth response");
+        }
     }
     // Response to our auth or set-audio-output
     else {
@@ -89,12 +93,16 @@ void Session::handle_message(const char* data, int len) {
                 cJSON_AddStringToObject(set_output, "param-audio-output", "datagram");
 
                 char* json_str = cJSON_PrintUnformatted(set_output);
-                esp_websocket_client_send_text(
+                int ret = esp_websocket_client_send_text(
                     static_cast<esp_websocket_client_handle_t>(ws_client_),
-                    json_str, strlen(json_str), portMAX_DELAY);
+                    json_str, strlen(json_str), pdMS_TO_TICKS(5000));
                 free(json_str);
                 cJSON_Delete(set_output);
-                ESP_LOGI(TAG, "Sent set-audio-output: %s", audio_dest);
+                if (ret < 0) {
+                    ESP_LOGE(TAG, "Failed to send set-audio-output");
+                } else {
+                    ESP_LOGI(TAG, "Sent set-audio-output: %s", audio_dest);
+                }
             }
             else if (strcmp(resp, "authenticate") == 0 && strcmp(status, "401") == 0) {
                 set_state(SessionState::Error, "Authentication failed");
@@ -184,7 +192,10 @@ void Session::stop() {
     if (ws_client_) {
         esp_websocket_client_handle_t client =
             static_cast<esp_websocket_client_handle_t>(ws_client_);
-        esp_websocket_client_close(client, portMAX_DELAY);
+        esp_err_t err = esp_websocket_client_close(client, pdMS_TO_TICKS(5000));
+        if (err != ESP_OK) {
+            ESP_LOGW(TAG, "WebSocket close timed out, forcing destroy");
+        }
         esp_websocket_client_destroy(client);
         ws_client_ = nullptr;
     }

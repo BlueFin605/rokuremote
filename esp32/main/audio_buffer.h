@@ -2,6 +2,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "esp_log.h"
 #include <cstdint>
 #include <cstring>
 
@@ -15,7 +16,7 @@ struct AudioFrame {
 
 class AudioBuffer {
 public:
-    static const size_t MAX_FRAMES = 100;  // ~2 seconds at 20ms/frame
+    static const size_t MAX_FRAMES = 250;  // ~5 seconds at 20ms/frame
 
     AudioBuffer() {
         queue_ = xQueueCreate(MAX_FRAMES, sizeof(AudioFrame));
@@ -36,6 +37,12 @@ public:
             AudioFrame discard;
             xQueueReceive(queue_, &discard, 0);
             xQueueSend(queue_, &frame, 0);
+            overflow_count_++;
+            // Log every 50 overflows to avoid spamming
+            if (overflow_count_ % 50 == 1) {
+                ESP_LOGW("audio_buf", "Buffer overflow (total drops: %lu)",
+                         (unsigned long)overflow_count_);
+            }
         }
     }
 
@@ -51,8 +58,12 @@ public:
 
     void clear() {
         if (queue_) xQueueReset(queue_);
+        overflow_count_ = 0;
     }
+
+    uint32_t overflow_count() const { return overflow_count_; }
 
 private:
     QueueHandle_t queue_ = nullptr;
+    volatile uint32_t overflow_count_ = 0;
 };
