@@ -8,6 +8,7 @@
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "esp_wifi_types.h"
 
 #include <cstring>
 #include <cstdio>
@@ -155,6 +156,10 @@ void wifi_init_sta() {
     // Block until connected
     xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT,
                         pdFALSE, pdTRUE, portMAX_DELAY);
+
+    // Disable WiFi power save — keeps radio always on for low-latency audio streaming
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    ESP_LOGI(TAG, "WiFi power save disabled for audio streaming");
 }
 
 std::string wifi_get_ip() {

@@ -92,7 +92,7 @@ export class AudioComponent implements OnInit, OnDestroy {
 
   private startPolling(): void {
     this.pollSub?.unsubscribe();
-    this.pollSub = interval(1000).pipe(
+    this.pollSub = interval(5000).pipe(
       switchMap(() => this.proxy.getStatus()),
     ).subscribe({
       next: (status) => {
