@@ -205,6 +205,58 @@ The phone communicates with the proxy via HTTP. Both the desktop proxy and ESP32
 
 ---
 
+## Phase 4: Progressive Web App (PWA)
+
+**Supports:** North Star #11-13, Findings — PWA section
+
+### What PWA Adds
+
+A PWA makes the existing web app installable on mobile — launched from the home screen, running fullscreen without browser chrome, with its own app icon. No new functionality, just a better mobile experience for the app that already works.
+
+### Manifest
+
+A `manifest.webmanifest` at the app root declares:
+
+| Field | Value | Why |
+|---|---|---|
+| `name` | Roku Remote | Shown on splash screen |
+| `short_name` | Roku | Shown under home screen icon |
+| `start_url` | `/` | Opens to root (setup or last-connected view) |
+| `display` | `standalone` | Fullscreen, no browser chrome |
+| `orientation` | `portrait` | Remote is a portrait UI |
+| `theme_color` | Match app header | Status bar blends with app |
+| `background_color` | Match app background | Splash screen background |
+| `icons` | 192px + 512px PNG | Required sizes for Android/iOS install |
+
+### Service Worker
+
+Angular's `@angular/pwa` schematic provides:
+
+- **App shell caching** — the Angular app loads instantly from cache, even offline (though the remote itself needs network to talk to the Roku/proxy).
+- **Asset precaching** — JS bundles, CSS, and static assets cached on first visit.
+- **Update strategy** — `SwUpdate` service detects new versions and prompts reload.
+
+No custom offline page is needed — the remote is useless without network. The service worker's value is **instant load** and **installability**, not offline support.
+
+### Icons
+
+- 192x192 and 512x512 PNG icons required for Android install prompt and splash screen.
+- 180x180 Apple Touch Icon for iOS "Add to Home Screen".
+- Simple design: Roku-like remote icon or the app's logo, on a solid background.
+
+### iOS Considerations
+
+- iOS requires `<meta name="apple-mobile-web-app-capable" content="yes">` and `<link rel="apple-touch-icon">` in `index.html`.
+- iOS PWAs have no install prompt — users must use Safari's "Add to Home Screen" manually.
+- Status bar style controlled via `<meta name="apple-mobile-web-app-status-bar-style">`.
+- Audio playback in iOS PWAs may pause when backgrounded — this is a known platform limitation noted in the findings.
+
+### Deployment
+
+No infrastructure changes needed. The manifest and service worker are static assets served from the same S3/CloudFront distribution. The GitHub Actions workflow already deploys all build output.
+
+---
+
 ## Verification
 
 ### How do I know it works on my machine?

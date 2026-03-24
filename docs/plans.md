@@ -14,6 +14,7 @@ Plan 1: Project Scaffolding          ✅ COMPLETE
               └─► Plan 5: App Launcher      ✅ COMPLETE
                     └─► Plan 6: Audio Proxy (Desktop)   ✅ COMPLETE (pending real Roku)
                           └─► Plan 7: Audio Proxy (ESP32)   🔧 CODE COMPLETE (needs hardware)
+Plan 8: Progressive Web App          (depends on Plan 1)
 ```
 
 Plans 1-2 can run in parallel. Plan 3 depends on 1. Each subsequent plan depends on the previous.
@@ -143,3 +144,28 @@ Flash: `idf.py -p /dev/ttyUSB0 flash monitor`
 - [ ] **NEEDS HARDWARE:** Audio quality and latency are acceptable for watching TV.
 - [ ] The Angular app works identically whether the proxy is the desktop version or the ESP32 — no code changes needed in the Angular app.
 - [ ] **NEEDS HARDWARE:** The ESP32 recovers from Wi-Fi disconnections and can be restarted without manual intervention.
+
+---
+
+## Plan 8: Progressive Web App (PWA)
+
+**Status:** Not started.
+
+**Satisfies:** North Star #11-13, Design — Phase 4 (PWA)
+
+**Ancestors:** Plan 1
+
+### Truth Statements
+
+- [ ] Running `ng add @angular/pwa` (or equivalent manual setup) has been applied to the Angular project.
+- [ ] A `manifest.webmanifest` exists with app name, icons, `display: standalone`, and `orientation: portrait`.
+- [ ] App icons exist at 192x192 and 512x512 PNG sizes.
+- [ ] An Apple Touch Icon (180x180) exists and is linked in `index.html`.
+- [ ] `index.html` contains the required iOS meta tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`).
+- [ ] A service worker is registered that precaches the app shell and static assets.
+- [ ] The `ngsw-config.json` is configured to cache app shell, JS bundles, CSS, and icon assets.
+- [ ] On Android Chrome, visiting the deployed site offers an "Add to Home Screen" / install prompt.
+- [ ] On iOS Safari, using "Add to Home Screen" installs the app with the correct icon and name.
+- [ ] The installed app launches fullscreen (no browser address bar or navigation chrome).
+- [ ] The `theme_color` and `background_color` in the manifest match the app's visual design.
+- [ ] All existing functionality (remote, apps, audio) works identically in the installed PWA.
