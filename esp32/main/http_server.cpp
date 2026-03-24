@@ -8,6 +8,7 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "cJSON.h"
+#include "lwip/sockets.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -79,13 +80,15 @@ static std::string get_roku_path(httpd_req_t* req) {
 }
 
 static void stop_session() {
-    if (g_session) {
-        g_session->stop();
-        g_session.reset();
-    }
+    // Stop receiver first — its tasks exit quickly via event groups.
+    // Session WebSocket close can take longer, so do it second.
     if (g_receiver) {
         g_receiver->stop();
         g_receiver.reset();
+    }
+    if (g_session) {
+        g_session->stop();
+        g_session.reset();
     }
     g_current_state = roku::SessionState::Idle;
     g_last_error[0] = '\0';
@@ -179,17 +182,25 @@ static esp_err_t audio_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "application/octet-stream");
     set_cors_headers(req);
 
+    // Disable Nagle — send audio chunks immediately instead of buffering
+    int sockfd = httpd_req_to_sockfd(req);
+    if (sockfd >= 0) {
+        int flag = 1;
+        setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    }
+
+    // Combined buffer: 2-byte length prefix + max frame data in one write
+    uint8_t send_buf[2 + sizeof(AudioFrame::data)];
     AudioFrame frame;
+
     while (true) {
-        uint16_t len = g_audio_buffer.pop(frame, 1000);
+        uint16_t len = g_audio_buffer.pop(frame, 200);
         if (len > 0) {
-            // 2-byte big-endian length + frame data
-            uint8_t prefix[2] = {
-                static_cast<uint8_t>((len >> 8) & 0xFF),
-                static_cast<uint8_t>(len & 0xFF)
-            };
-            if (httpd_resp_send_chunk(req, reinterpret_cast<char*>(prefix), 2) != ESP_OK) break;
-            if (httpd_resp_send_chunk(req, reinterpret_cast<char*>(frame.data), len) != ESP_OK) break;
+            // Pack prefix + frame into single buffer to avoid two TCP writes
+            send_buf[0] = static_cast<uint8_t>((len >> 8) & 0xFF);
+            send_buf[1] = static_cast<uint8_t>(len & 0xFF);
+            memcpy(send_buf + 2, frame.data, len);
+            if (httpd_resp_send_chunk(req, reinterpret_cast<char*>(send_buf), 2 + len) != ESP_OK) break;
         } else {
             // Keepalive — zero-length frame
             uint8_t zero[2] = {0, 0};
@@ -308,12 +319,13 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port;
-    config.stack_size = 8192;
+    config.stack_size = 10240;
     config.max_uri_handlers = 12;
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.lru_purge_enable = true;
     // Allow enough open sockets for /audio streaming + other requests
-    config.max_open_sockets = 4;
+    // Audio stream holds 1 socket long-term; need headroom for status/stop/roku proxy
+    config.max_open_sockets = 7;
 
     esp_err_t err = httpd_start(&g_server, &config);
     if (err != ESP_OK) {
