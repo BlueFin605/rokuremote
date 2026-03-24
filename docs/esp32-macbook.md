@@ -44,7 +44,16 @@ roku-proxy-esp32/
 
 ## Serial monitor
 
-The monitor uses `screen` if available, otherwise falls back to `python3` with `pyserial`. To exit `screen`, press `Ctrl+A` then `K`, then `Y`.
+The monitor uses `screen` if available, otherwise falls back to `python3` with `pyserial`.
+
+### Exiting the monitor
+
+| Monitor | How to exit |
+|---------|------------|
+| `screen` | `Ctrl+A` then `K` then `Y` |
+| Python fallback | `Ctrl+C` |
+
+If `screen` appears frozen or unresponsive, `Ctrl+A` then `\` force-kills it.
 
 ## Troubleshooting
 
