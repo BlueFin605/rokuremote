@@ -14,6 +14,8 @@ Plan 1: Project Scaffolding          ✅ COMPLETE
               └─► Plan 5: App Launcher      ✅ COMPLETE
                     └─► Plan 6: Audio Proxy (Desktop)   ✅ COMPLETE (pending real Roku)
                           └─► Plan 7: Audio Proxy (ESP32)   🔧 CODE COMPLETE (needs hardware)
+Plan 8: Progressive Web App          (depends on Plan 1)
+Plan 9: ESP32 Self-Hosted UI         (depends on Plan 7 + Plan 8)
 ```
 
 Plans 1-2 can run in parallel. Plan 3 depends on 1. Each subsequent plan depends on the previous.
@@ -143,3 +145,81 @@ Flash: `idf.py -p /dev/ttyUSB0 flash monitor`
 - [ ] **NEEDS HARDWARE:** Audio quality and latency are acceptable for watching TV.
 - [ ] The Angular app works identically whether the proxy is the desktop version or the ESP32 — no code changes needed in the Angular app.
 - [ ] **NEEDS HARDWARE:** The ESP32 recovers from Wi-Fi disconnections and can be restarted without manual intervention.
+
+---
+
+## Plan 8: Progressive Web App (PWA)
+
+**Status:** Not started.
+
+**Satisfies:** North Star #11-13, Design — Phase 4 (PWA)
+
+**Ancestors:** Plan 1
+
+### Truth Statements
+
+- [ ] Running `ng add @angular/pwa` (or equivalent manual setup) has been applied to the Angular project.
+- [ ] A `manifest.webmanifest` exists with app name, icons, `display: standalone`, and `orientation: portrait`.
+- [ ] App icons exist at 192x192 and 512x512 PNG sizes.
+- [ ] An Apple Touch Icon (180x180) exists and is linked in `index.html`.
+- [ ] `index.html` contains the required iOS meta tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`).
+- [ ] A service worker is registered that precaches the app shell and static assets.
+- [ ] The `ngsw-config.json` is configured to cache app shell, JS bundles, CSS, and icon assets.
+- [ ] On Android Chrome, visiting the deployed site offers an "Add to Home Screen" / install prompt.
+- [ ] On iOS Safari, using "Add to Home Screen" installs the app with the correct icon and name.
+- [ ] The installed app launches fullscreen (no browser address bar or navigation chrome).
+- [ ] The `theme_color` and `background_color` in the manifest match the app's visual design.
+- [ ] All existing functionality (remote, apps, audio) works identically in the installed PWA.
+
+---
+
+## Plan 9: ESP32 Self-Hosted UI
+
+**Status:** Not started.
+
+**Satisfies:** North Star #11-13, Design — Phase 4 (PWA), resolves HTTPS mixed-content limitation
+
+**Ancestors:** Plan 7, Plan 8
+
+### Motivation
+
+The CloudFront-hosted app is served over HTTPS, but the ESP32 proxy runs HTTP on the local network. Browsers block these mixed-content requests, and iOS forces HTTPS for PWAs added to the home screen. Serving the Angular app directly from the ESP32 makes everything same-origin over HTTP, eliminating mixed-content issues entirely.
+
+### Approach
+
+Embed the Angular production build (~270KB gzipped) directly in the ESP32 firmware binary. The ESP32 serves both the UI and API on port 8080. No SPIFFS/LittleFS — files are compiled into the firmware for simplicity and atomic updates.
+
+### Truth Statements
+
+**API prefix migration:**
+- [ ] All ESP32 HTTP API routes are moved under an `/api/` prefix (`/api/discover`, `/api/start`, `/api/stop`, `/api/status`, `/api/audio`, `/api/roku/*`).
+- [ ] The Angular `ProxyService` and `RokuService` use `/api/` prefixed paths for all proxy requests.
+- [ ] When the app is served from the ESP32 (same-origin), the proxy URL defaults to empty string (relative paths).
+- [ ] When the app is served from CloudFront (cross-origin), the proxy URL remains configurable as before.
+
+**Angular ESP32 build configuration:**
+- [ ] An `esp32` build configuration exists in `angular.json` that disables the service worker (service workers require HTTPS on non-localhost origins).
+- [ ] `ng build --configuration esp32` produces a production build without service worker files.
+- [ ] The `manifest.webmanifest` is still included (for "Add to Home Screen" on supported browsers).
+
+**Build pipeline:**
+- [ ] A `prepare_web.sh` script exists that: builds Angular with the `esp32` configuration, gzips all text assets (JS, CSS, HTML, JSON, webmanifest), and generates a CMake include file listing all files to embed.
+- [ ] The ESP32 `CMakeLists.txt` embeds all prepared web files via `EMBED_FILES`.
+- [ ] The GitHub Actions `build-esp32` job builds Angular, runs `prepare_web.sh`, then builds the ESP32 firmware with embedded web files.
+
+**Static file serving:**
+- [ ] The ESP32 HTTP server has a static file handler that serves embedded web assets with correct `Content-Type` headers.
+- [ ] Gzip-compressed files are served with `Content-Encoding: gzip` — the browser decompresses transparently.
+- [ ] Hashed filenames (JS/CSS with build hashes) are served with long-lived cache headers (`Cache-Control: public, max-age=31536000, immutable`).
+- [ ] `index.html`, `ngsw.json`, and `manifest.webmanifest` are served with `Cache-Control: no-cache`.
+- [ ] Any unrecognised path falls back to `index.html` (SPA routing support).
+
+**Partition table:**
+- [ ] A custom partition table gives the factory app partition enough space for firmware + embedded web assets (~1.9MB on 4MB flash).
+- [ ] `sdkconfig.defaults` is updated to use the custom partition table.
+
+**Verification:**
+- [ ] Browsing to `http://<esp32-ip>:8080/` loads the full Angular app served from the ESP32.
+- [ ] All existing functionality (remote, apps, audio) works when served from the ESP32.
+- [ ] The app can be added to the phone's home screen from `http://<esp32-ip>:8080/` and launches fullscreen.
+- [ ] The CloudFront-hosted version (`roku.bluefin605.com`) continues to work unchanged for users who configure a proxy URL manually.

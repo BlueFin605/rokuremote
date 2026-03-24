@@ -3,10 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideHttpClient } from '@angular/common/http';
 import { RokuService } from './roku.service';
 
-const PROXY = 'http://roku-proxy.local:8080';
+const PROXY = 'http://roku-proxy.local';
 
 function rokuUrl(path: string, ip: string): string {
-  return `${PROXY}/roku/${path}?ip=${ip}`;
+  return `${PROXY}/api/roku/${path}?ip=${ip}`;
 }
 
 describe('RokuService', () => {
