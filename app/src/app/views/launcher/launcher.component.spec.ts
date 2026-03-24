@@ -37,9 +37,9 @@ describe('LauncherComponent', () => {
   });
 
   function flushApps() {
-    httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/api/roku/query/apps?ip=192.168.1.100').flush(appsXml);
+    httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/query/apps?ip=192.168.1.100').flush(appsXml);
     // Active app query fires after apps load
-    httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/api/roku/query/active-app?ip=192.168.1.100')
+    httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/query/active-app?ip=192.168.1.100')
       .flush('<active-app><app id="">Roku</app></active-app>');
     fixture.detectChanges();
   }
@@ -102,7 +102,7 @@ describe('LauncherComponent', () => {
     component.launch(component.filteredApps[1]); // Netflix
 
     const req = httpMock.expectOne(r =>
-      r.url === 'http://roku-proxy.local:8080/api/roku/launch/12?ip=192.168.1.100' && r.method === 'POST'
+      r.url === 'http://roku-proxy.local/api/roku/launch/12?ip=192.168.1.100' && r.method === 'POST'
     );
     req.flush('');
   });
@@ -158,8 +158,8 @@ describe('LauncherComponent', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
 
-    httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/api/roku/query/apps?ip=192.168.1.100').flush(appsXml);
-    httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/api/roku/query/active-app?ip=192.168.1.100')
+    httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/query/apps?ip=192.168.1.100').flush(appsXml);
+    httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/query/active-app?ip=192.168.1.100')
       .flush('<active-app><app id="">Roku</app></active-app>');
     fixture.detectChanges();
 
@@ -180,7 +180,7 @@ describe('LauncherComponent', () => {
   });
 
   it('should show limited mode error with instructions', () => {
-    httpMock.expectOne(r => r.url === 'http://roku-proxy.local:8080/api/roku/query/apps?ip=192.168.1.100')
+    httpMock.expectOne(r => r.url === 'http://roku-proxy.local/api/roku/query/apps?ip=192.168.1.100')
       .flush('ECP command not allowed in Limited mode.', { status: 403, statusText: 'Forbidden' });
     fixture.detectChanges();
 

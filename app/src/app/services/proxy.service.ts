@@ -18,17 +18,21 @@ export interface ProxyStatus {
 })
 export class ProxyService {
   private static readonly STORAGE_KEY = 'proxy-url';
-  private static readonly DEFAULT_URL = 'http://roku-proxy.local:8080';
+  private static readonly DEFAULT_URL = 'http://roku-proxy.local';
   private proxyUrl: string;
 
   constructor(private http: HttpClient) {
     this.proxyUrl = localStorage.getItem(ProxyService.STORAGE_KEY) ?? ProxyService.detectDefaultUrl();
   }
 
-  /** If served from the ESP32 (port 8080), use same-origin. Otherwise use mDNS default. */
+  /** If served from the ESP32 (same-origin API available), use relative paths. Otherwise use mDNS default. */
   private static detectDefaultUrl(): string {
-    if (typeof window !== 'undefined' && window.location.port === '8080') {
-      return '';
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      // Same-origin when served from ESP32: mDNS name or local IP on port 80
+      if (host === 'roku-proxy.local' || (host.match(/^192\.168\./) && window.location.port === '')) {
+        return '';
+      }
     }
     return ProxyService.DEFAULT_URL;
   }
