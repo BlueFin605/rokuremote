@@ -25,6 +25,8 @@ idf_component_register(
         esp_event
         esp_http_client
         json
+        esp_driver_uart
+        esp_driver_gpio
     EMBED_FILES
         ${WEB_EMBED_FILES}
 )

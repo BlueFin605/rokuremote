@@ -37,7 +37,7 @@ public:
             AudioFrame discard;
             xQueueReceive(queue_, &discard, 0);
             xQueueSend(queue_, &frame, 0);
-            overflow_count_++;
+            overflow_count_ = overflow_count_ + 1;
             // Log every 50 overflows to avoid spamming
             if (overflow_count_ % 50 == 1) {
                 ESP_LOGW("audio_buf", "Buffer overflow (total drops: %lu)",
