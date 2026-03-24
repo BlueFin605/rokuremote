@@ -4,7 +4,7 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infra", "infra", "{30258541-D0D8-F3FD-D559-E63D6BF074C2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RokuRemote.Infra", "infra\RokuRemote.Infra\RokuRemote.Infra.csproj", "{CF737680-1170-0D71-4F7F-B120970374FD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RokuRemote.Infra", "RokuRemote.Infra\RokuRemote.Infra.csproj", "{CF737680-1170-0D71-4F7F-B120970374FD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

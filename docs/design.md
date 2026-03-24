@@ -9,44 +9,50 @@ How it could be built. Contracts, architecture, verification. No implementation.
 ```
 ┌─────────────────────────────────────────────────┐
 │                    AWS (S3/CloudFront)           │
-│              Hosts static Angular app            │
+│    Hosts static Angular app (HTTP allowed for   │
+│    mixed-content compat with local proxy)       │
 └──────────────────────┬──────────────────────────┘
-                       │ HTTPS (serve UI)
+                       │ HTTP/HTTPS (serve UI)
                        ▼
 ┌─────────────────────────────────────────────────┐
 │                  Phone (Browser)                 │
 │                                                  │
-│  ┌─────────────┐  ┌──────────┐  ┌────────────┐  │
-│  │ Remote View  │  │ App Grid │  │ Audio View │  │
-│  └──────┬──────┘  └────┬─────┘  └─────┬──────┘  │
-│         │              │               │         │
-│  ┌──────┴──────────────┴───────────────┴──────┐  │
-│  │            Roku Service Layer              │  │
-│  │  (HTTP client for ECP, WebSocket for auth) │  │
-│  └──────────────────────┬─────────────────────┘  │
+│  ┌─────────┐ ┌──────────┐ ┌───────┐ ┌───────┐  │
+│  │  Setup  │ │  Remote  │ │ Apps  │ │ Audio │  │
+│  └────┬────┘ └────┬─────┘ └───┬───┘ └───┬───┘  │
+│       │           │           │          │      │
+│  ┌────┴───────────┴───────────┴──────────┴───┐  │
+│  │     Proxy Service    +    Roku Service    │  │
+│  │  (routes all requests through proxy)      │  │
+│  └──────────────────────┬────────────────────┘  │
 └─────────────────────────┼────────────────────────┘
-                          │ HTTP/WS (local network)
+                          │ HTTP (local network)
+                          ▼
+            ┌──────────────────────────┐
+            │   Local Proxy (C++ or    │
+            │   ESP32, same contract)  │
+            │                          │
+            │  • CORS headers          │
+            │  • ECP forwarding        │
+            │  • SSDP discovery        │
+            │  • WS auth + RTP recv    │
+            │  • Audio serving         │
+            └─────────────┬────────────┘
+                          │ HTTP/WS/RTP (local network)
                           ▼
                  ┌─────────────────┐
                  │   Roku Device   │
                  │   port 8060     │
-                 └────────┬────────┘
-                          │ RTP/UDP (audio)
-                          ▼
-                 ┌─────────────────┐
-                 │  ESP32 Proxy    │  ◄── Phase 3 only
-                 │  (local network)│
-                 └────────┬────────┘
-                          │ HTTP/WS (audio to phone)
-                          ▼
-                    Phone (Browser)
+                 └─────────────────┘
 ```
 
-### Key Decision: Angular + Capacitor (later)
+### Key Decision: All Requests Route Through a Local Proxy
 
-- **Phase 1 & 2**: Pure Angular web app, hosted on AWS, accessed via phone browser.
-- **Phase 3 (Private Listening)**: Either add Capacitor for native UDP socket access, or use ESP32 as audio proxy so the browser can receive audio over HTTP/WebSocket.
-- This means Core Control and App Launcher work in any browser with zero install. Private Listening is the only feature that may require additional infrastructure.
+- The browser cannot talk directly to the Roku — ECP has no CORS headers, and browsers block cross-origin HTTP requests.
+- A local proxy (C++ desktop app during development, ESP32 for deployment) adds CORS headers and forwards all ECP requests.
+- The same proxy handles SSDP discovery and private listening (WebSocket auth, RTP reception, audio serving).
+- The Angular app is a pure browser app with zero native dependencies. All platform-specific work (UDP, multicast, RTP) lives in the proxy.
+- The desktop proxy and ESP32 proxy expose the **same HTTP API contract** — the Angular app doesn't know or care which one it's talking to.
 
 ---
 
@@ -56,14 +62,15 @@ How it could be built. Contracts, architecture, verification. No implementation.
 
 ### First-Run Setup & Connection (Flow 0)
 
-- **Phase 1**: Manual IP entry. The user enters their Roku's IP once, it's saved in localStorage.
-- **Phase 3**: ESP32 provides SSDP auto-discovery (see Phase 3 section). Manual IP entry remains as fallback.
+- **Proxy URL**: Configurable via a collapsible "Proxy Settings" section on the setup page. Defaults to `http://roku-proxy.local:8080` (mDNS for ESP32). Users can override to any IP/port and reset to default. Saved in localStorage.
+- **Roku discovery**: If the proxy is reachable, SSDP auto-discovery via "Discover Roku Devices" button. Manual IP entry remains as fallback.
 - **Connection check**: On connect, attempt `GET /query/device-info`.
-  - Success → Roku is reachable and ECP is enabled. Save IP, show remote.
+  - Success with ECP enabled → Save IP, navigate to **app launcher** view (default landing page).
+  - Success with ECP limited → Save IP, navigate to **remote** view (Apps button hidden).
   - "Limited mode" error → Show setup instructions: *Settings > System > Advanced System Settings > Control by Mobile Apps > Network Access > Enabled*. Offer "Try Again".
   - Timeout/unreachable → Show "Roku not found at this IP" with option to re-enter.
   - Tip for finding IP → Show: *On your Roku: Settings > Network > About*.
-- **Persistence**: Save last-known Roku IP and device name in localStorage. On next open, try the saved IP first. If it fails, prompt for re-entry.
+- **Persistence**: Save last-known Roku IP, proxy URL, and ECP mode in localStorage. On next open, try the saved IP first. If it fails, prompt for re-entry.
 
 ### Remote Control Interface
 
@@ -73,16 +80,18 @@ How it could be built. Contracts, architecture, verification. No implementation.
 - **Volume**: Volume Up, Volume Down, Mute.
 - **Power**: Power On, Power Off (or toggle).
 - **Text input**: A text field that sends characters via `Lit_<char>` keypresses. Include a "Send" keyboard approach — type in the field, characters are sent as you type or on submit.
-- **Each button** sends `POST http://<roku-ip>:8060/keypress/<Key>`.
+- **Each button** sends a keypress command via the proxy → Roku.
 
 ### Command Throttling
 
 - Minimum 50ms between consecutive keypress requests to avoid overwhelming the Roku.
 - For held buttons (e.g., volume), use `keydown`/`keyup` with repeat at a safe interval.
 
-### Contracts
+### Roku ECP Contracts (via proxy)
 
-| Endpoint | Method | Purpose |
+All ECP requests are routed through the proxy at `GET/POST /roku/<path>?ip=<roku-ip>`. The proxy forwards to the Roku and adds CORS headers to the response.
+
+| ECP Path | Method | Purpose |
 |---|---|---|
 | `/query/device-info` | GET | Verify connection, get device name/model/capabilities |
 | `/keypress/<key>` | POST | Send button press |
@@ -102,22 +111,24 @@ How it could be built. Contracts, architecture, verification. No implementation.
 
 ### App List
 
-- `GET /query/apps` returns XML list of installed channels.
+- `GET /roku/query/apps?ip=<roku-ip>` (via proxy) returns XML list of installed channels.
 - Parse XML → array of `{ id, name, version }`.
-- For each app, fetch icon: `GET /query/icon/<appId>` → binary image (check `Content-Type` header for format).
+- For each app, fetch icon: `GET /roku/query/icon/<appId>?ip=<roku-ip>` (via proxy) → binary image (check `Content-Type` header for format).
 - **Caching**: Store app list and icons in localStorage/IndexedDB. Refresh on pull-to-refresh or on a "refresh" button. Icons rarely change — cache aggressively.
 
 ### App Grid UI
 
-- Grid of tiles, each showing the app icon and name.
-- Tap a tile → `POST /launch/<appId>`.
+- Responsive grid of tiles using CSS `auto-fill` — shows as many columns as fit the screen width (3 on phone, more on tablet/desktop, up to 960px max-width).
+- Each tile shows the app icon and name. The currently active app is highlighted.
+- Tap a tile → `POST /roku/launch/<appId>?ip=<roku-ip>` (via proxy). Stays on the app launcher (does not navigate away).
 - Search/filter bar at the top for quick lookup when the list is long.
 - Default sort: alphabetical by name (since ECP doesn't provide home screen order).
-- Optional: let the user reorder/favourite apps, persisted in localStorage.
+- Drag-to-reorder for custom app ordering, persisted in localStorage. Reset to alphabetical available.
+- **ECP limited mode**: When Roku is in limited mode, the app launcher is inaccessible — the Apps button is hidden from the remote view and post-connect navigation goes to the remote view instead.
 
-### Contracts
+### Roku ECP Contracts (via proxy)
 
-| Endpoint | Method | Purpose |
+| ECP Path | Method | Purpose |
 |---|---|---|
 | `/query/apps` | GET | List installed channels |
 | `/query/icon/<appId>` | GET | Fetch channel icon image |
@@ -126,45 +137,48 @@ How it could be built. Contracts, architecture, verification. No implementation.
 
 ---
 
-## Phase 3: Private Listening + ESP32 Network Helper
+## Phase 3: Private Listening + Local Proxy
 
 **Supports:** Flow 1 (discovery), Flow 3, North Star #3, #8-10, #14
 
-### Architecture Decision: ESP32 as Local Network Helper
+### Architecture Decision: Local Proxy (Desktop + ESP32)
 
-The ESP32 serves two roles in Phase 3:
+The proxy serves three roles across all phases:
 
-1. **SSDP device discovery** — finds Rokus on the network so the user doesn't need to enter an IP manually.
-2. **Audio proxy** — receives RTP audio from the Roku and re-serves it to the phone browser.
+1. **CORS proxy** — forwards ECP requests from the browser to the Roku, adding CORS headers. Required for all phases, not just Phase 3.
+2. **SSDP device discovery** — finds Rokus on the network so the user doesn't need to enter an IP manually.
+3. **Audio proxy** — receives RTP audio from the Roku and re-serves it to the phone browser.
 
-**Chosen path: ESP32 as local network helper.** Rationale:
+**Two deployment targets, same contract:**
 
-| Option | Pros | Cons |
-|---|---|---|
-| **Phone receives RTP directly** | No extra hardware | Requires Capacitor + native UDP plugin. Not available in browser. Adds mobile app build complexity for Phase 1 & 2 which don't need it. |
-| **ESP32 proxy** | Works with browser-only approach. Keeps Phase 1 & 2 simple. User already has ESP32. | Extra hardware on the network. ESP32 firmware to build/maintain. |
+| Target | Use Case |
+|---|---|
+| **Desktop C++ proxy** (`proxy/`) | Development and desktop use. Fast iteration, runs on Mac/Windows. |
+| **ESP32 firmware** (`esp32/`) | Standalone deployment. No PC needed after flashing. |
 
-The ESP32 proxy preserves the "works in a browser" principle for all phases. The phone never needs native UDP — the ESP32 handles RTP and re-serves audio over a protocol the browser can consume (HTTP streaming or WebSocket).
+The proxy preserves the "works in a browser" principle for all phases. The phone never needs native UDP — the proxy handles RTP and re-serves audio over HTTP chunked transfer.
 
-### ESP32 Responsibilities
+### Proxy Responsibilities
 
-1. **SSDP discovery** — send M-SEARCH to 239.255.255.250:1900 with `ST: roku:ecp`, collect responses, expose found devices via HTTP API.
-2. **WebSocket signaling** — connect to `ws://<roku-ip>:8060/ecp-session`, perform auth challenge-response, send `set-audio-output` with its own IP:port.
-3. **RTP reception** — listen on UDP port 6970 for Opus RTP packets from the Roku.
-4. **Audio re-serving** — serve decoded audio (or raw Opus frames) to the phone over HTTP or WebSocket. The phone decodes and plays via Web Audio API or `<audio>` element.
-5. **Lifecycle** — start/stop listening on command from the phone.
+1. **ECP forwarding** — `GET/POST /roku/<path>?ip=<roku-ip>` forwards to the Roku at `http://<ip>:8060/<path>`, adding CORS headers to the response. This is the foundation — all remote control, app queries, and launch commands flow through this.
+2. **SSDP discovery** — send M-SEARCH to 239.255.255.250:1900 with `ST: roku:ecp`, collect responses, expose found devices via HTTP API.
+3. **WebSocket signaling** — connect to `ws://<roku-ip>:8060/ecp-session`, perform auth challenge-response, send `set-audio-output` with its own IP:port.
+4. **RTP reception** — listen on UDP port 6970 for Opus RTP packets from the Roku. Send RTCP receiver reports back to the Roku on port 5150.
+5. **Audio serving** — serve raw Opus frames to the phone over HTTP chunked transfer (2-byte length prefix per frame). Thread-safe ring buffer (max 500 frames ~10 sec).
+6. **Lifecycle** — start/stop listening on command from the phone.
 
-### Phone-to-ESP32 Contract
+### Phone-to-Proxy Contract
 
-The phone tells the ESP32 what to do via a simple HTTP API on the ESP32:
+The phone communicates with the proxy via HTTP. Both the desktop proxy and ESP32 expose the same endpoints:
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `/discover` | GET | ESP32 runs SSDP discovery, returns JSON array of found Roku devices `[{ ip, name, model }]` |
-| `/start?roku=<ip>` | POST | ESP32 initiates private listening session with the specified Roku |
-| `/stop` | POST | ESP32 tears down the session |
-| `/status` | GET | Returns current state (idle, connecting, streaming, error) |
-| `/audio` | GET (streaming) | Audio stream for the phone to play (HTTP chunked or WebSocket upgrade) |
+| `/roku/<path>?ip=<roku-ip>` | GET/POST | Forward any ECP request to the Roku, return response with CORS headers |
+| `/discover` | GET | Run SSDP discovery, return JSON array of found Roku devices `[{ ip, name, model }]` |
+| `/start?roku=<ip>` | POST | Initiate private listening session with the specified Roku |
+| `/stop` | POST | Tear down the session |
+| `/status` | GET | Return current state (idle, connecting, authenticating, streaming, error) + error message |
+| `/audio` | GET (streaming) | HTTP chunked stream of Opus frames (2-byte length prefix per frame) |
 
 ### Auth Protocol (from RPListening source)
 
@@ -173,21 +187,21 @@ The phone tells the ESP32 what to do via a simple HTTP API on the ESP32:
 3. Compute: `SHA1(challenge + transform("95E610D0-7C29-44EF-FB0F-97F1FCE4C297", shift=9))` → Base64.
 4. Send JSON `{ request: "authenticate", "request-id": "0", "param-response": "<hash>" }`.
 5. Receive `{ response: "authenticate", status: "200", "status-msg": "OK" }`.
-6. Send `set-audio-output` with ESP32's `IP:6970`.
+6. Send `set-audio-output` with proxy's `IP:6970`.
 7. RTP Opus/48kHz/stereo packets arrive on UDP 6970.
 
 ### Audio Playback on Phone
 
-- ESP32 serves audio over HTTP (chunked transfer) or WebSocket.
-- Phone uses Web Audio API with an Opus decoder (e.g., another-libopus.js Wasm decoder, as proven by the existing ESP32 project) or decodes on ESP32 and serves PCM.
-- Trade-off: decoding on ESP32 (CPU-intensive, may need ESP32-S3) vs. decoding in browser (well-supported, offloads ESP32).
+- Proxy serves raw Opus frames over HTTP chunked transfer (2-byte length prefix per frame).
+- Phone decodes with `opus-decoder` npm package (Wasm, 48kHz stereo) and plays via Web Audio API with scheduled buffer playback.
+- **Latency control**: User-adjustable jitter buffer depth (50–500ms, default 150ms). Lower values reduce delay but risk audio dropouts; higher values smooth jitter at the cost of delay.
 
 ### Failure Handling
 
 - Roku doesn't support private listening → Phase 1 already knows this from `device-info`. Hide the button.
 - Auth fails → show error, suggest firmware may have changed the protocol.
-- ESP32 unreachable → show "Audio proxy not found" with setup instructions.
-- Stream drops → ESP32 reports status change, phone shows reconnect option.
+- Proxy unreachable → show "Proxy not found" with setup instructions.
+- Stream drops → proxy reports status change, phone shows reconnect option.
 
 ---
 
@@ -196,9 +210,11 @@ The phone tells the ESP32 what to do via a simple HTTP API on the ESP32:
 ### How do I know it works on my machine?
 
 **Phase 1 & 2 (Angular app):**
-- Angular dev server (`ng serve`) running on laptop.
+- Start the desktop proxy: `cd proxy && cmake -B build && cmake --build build && ./build/roku-proxy`.
+- Start the Angular dev server: `cd app && ng serve`.
 - Open on phone browser (same Wi-Fi) via laptop's local IP.
-- Real Roku on the same network — press buttons, see TV respond.
+- The proxy handles CORS and ECP forwarding — no `proxy.conf.js` needed.
+- Real Roku on the same network — press buttons, see TV respond. Or use mock: `cd mock && node roku-mock.mjs`.
 
 **Phase 3 (Audio proxy) — Desktop-first development:**
 
@@ -230,7 +246,8 @@ This means Phase 3 development doesn't require an ESP32 until the final stage. T
 ### How do I know it works in production?
 
 - **Infrastructure (CDK)**: AWS infrastructure defined in CDK (C#), run manually to provision/update. Creates S3 bucket, CloudFront distribution, OAI/OAC, Route53 records (if custom domain), and any required IAM roles.
-- **Deployment (GitHub Actions)**: On push to main, GitHub Actions runs `ng build`, uploads to S3, and invalidates the CloudFront cache. No manual deployment steps after initial CDK setup.
+- **Deployment (GitHub Actions)**: On push to main, GitHub Actions runs `ng build`, uploads to S3, and invalidates the CloudFront cache. Uses OIDC federation for AWS auth — no long-lived access keys. No manual deployment steps after initial CDK setup.
+- **Mixed-content/CORS**: Resolved two ways: (1) CloudFront uses `ViewerProtocolPolicy.ALLOW_ALL` so HTTP access works, and (2) the proxy returns `Access-Control-Allow-Private-Network: true` so HTTPS access also works (Chrome Private Network Access). Both HTTP and HTTPS work from the deployed site to the local proxy.
 - **Monitoring**: CloudFront access logs for basic usage. No backend to monitor.
 - **The real test**: Open on phone, control the Roku, launch apps, listen to audio. This is a personal tool — production monitoring is "does it work when I use it."
 
@@ -244,7 +261,7 @@ This means Phase 3 development doesn't require an ESP32 until the final stage. T
 | Language | TypeScript | User's existing expertise |
 | Hosting | AWS S3 + CloudFront | User has AWS account, static site is simplest deployment |
 | Infrastructure as Code | AWS CDK (C#) | User's C# expertise, CDK is AWS-native, run manually to provision |
-| CI/CD | GitHub Actions | Deploys static site to S3 on push to main, invalidates CloudFront |
+| CI/CD | GitHub Actions (OIDC auth) | Deploys static site to S3 on push to main, invalidates CloudFront. Uses OIDC federation — no long-lived access keys. |
 | HTTP Client | Angular HttpClient | Built-in, handles the simple REST calls to ECP |
 | XML Parsing | DOMParser (browser built-in) | ECP responses are XML, no library needed |
 | Audio Proxy | C++ (desktop-first, then ESP32) | User's C++ expertise. Develop/test on Mac/Windows with fast iteration, port to ESP32 for deployment. |
@@ -256,8 +273,9 @@ This means Phase 3 development doesn't require an ESP32 until the final stage. T
 
 | Decision | Chosen | Rejected | Why |
 |---|---|---|---|
-| Discovery (Phase 1) | Manual IP entry | SSDP auto-discovery | SSDP needs UDP which browsers can't do. Manual entry works, keeps Phase 1 zero-dependency. |
+| CORS approach | Local proxy adds CORS headers | Angular dev proxy (`proxy.conf.js`) | A dev proxy only works during development. The local C++ proxy is needed in production anyway (for audio/SSDP), so it handles CORS for all phases consistently. |
+| Discovery (Phase 1) | Manual IP entry + proxy SSDP | Browser-only SSDP | SSDP needs UDP which browsers can't do. Proxy handles SSDP; manual entry remains as fallback. |
 | Discovery (Phase 3) | ESP32 SSDP + manual fallback | Manual only | ESP32 is already on the network for audio. Adding discovery is low effort and improves UX. Manual IP remains as fallback. |
 | Audio proxy | ESP32 | Phone-native via Capacitor | Keeps all phases browser-only. User has ESP32. Avoids mobile build toolchain for Phase 1 & 2. |
-| Audio decode location | Browser (Wasm Opus decoder) | ESP32 decodes to PCM | Offloads CPU from ESP32, proven approach (existing project uses this). |
+| Audio decode location | Browser (`opus-decoder` Wasm package) | Proxy decodes to PCM | Offloads CPU from proxy/ESP32, well-supported Wasm approach. |
 | App grid order | Alphabetical + user favourites | Mimic Roku home screen order | ECP doesn't expose home screen order. |

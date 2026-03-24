@@ -7,6 +7,7 @@ export interface RokuDeviceInfo {
   name: string;
   model: string;
   supportsPrivateListening: boolean;
+  ecpEnabled: boolean;
 }
 
 export interface RokuApp {
@@ -31,9 +32,12 @@ export class RokuService {
   private static readonly TIMEOUT_MS = 3000;
   private static readonly THROTTLE_MS = 60;
 
+  private static readonly ECP_KEY = 'roku-ecp-enabled';
+
   private rokuIp: string | null = null;
   private commandQueue = new Subject<{ key: string; action: 'keypress' | 'keydown' | 'keyup' }>();
   private connectionError = new Subject<void>();
+  private _ecpEnabled = true;
 
   private rokuUrl(path: string, ip?: string): string {
     const proxyUrl = this.proxy.getProxyUrl();
@@ -42,8 +46,13 @@ export class RokuService {
 
   connectionLost$ = this.connectionError.asObservable();
 
+  get ecpEnabled(): boolean {
+    return this._ecpEnabled;
+  }
+
   constructor(private http: HttpClient, private proxy: ProxyService) {
     this.rokuIp = localStorage.getItem(RokuService.STORAGE_KEY);
+    this._ecpEnabled = localStorage.getItem(RokuService.ECP_KEY) !== 'false';
     this.initCommandQueue();
   }
 
@@ -59,7 +68,9 @@ export class RokuService {
       map(xml => this.parseDeviceInfo(xml)),
       map(info => {
         this.rokuIp = ip;
+        this._ecpEnabled = info.ecpEnabled;
         localStorage.setItem(RokuService.STORAGE_KEY, ip);
+        localStorage.setItem(RokuService.ECP_KEY, String(info.ecpEnabled));
         return info;
       }),
       catchError(err => this.handleError(err))
@@ -188,6 +199,7 @@ export class RokuService {
       name: getText('friendly-device-name') || getText('default-device-name') || 'Roku',
       model: getText('model-name') || 'Unknown',
       supportsPrivateListening: getText('supports-private-listening') === 'true',
+      ecpEnabled: getText('ecp-setting-mode') !== 'limited',
     };
   }
 

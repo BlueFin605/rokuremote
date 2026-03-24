@@ -162,3 +162,90 @@
     margin-top: 1rem;
   }
 }
+
+.proxy-section {
+  margin-top: 2rem;
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+
+  .proxy-toggle {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    color: #888;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+
+    &:hover {
+      color: #6c2dc7;
+    }
+  }
+
+  .proxy-config {
+    margin-top: 0.75rem;
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+
+      input {
+        flex: 1;
+        padding: 0.75rem;
+        font-size: 1rem;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        outline: none;
+
+        &:focus {
+          border-color: #6c2dc7;
+        }
+      }
+
+      button {
+        padding: 0.75rem 1.25rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        background: #6c2dc7;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+    }
+
+    .proxy-actions {
+      margin-top: 0.5rem;
+    }
+
+    .reset-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      color: #6c2dc7;
+      background: none;
+      border: 1px solid #6c2dc7;
+      border-radius: 6px;
+      cursor: pointer;
+
+      &:hover {
+        background: #6c2dc7;
+        color: #fff;
+      }
+    }
+
+    .hint {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: #888;
+    }
+  }
+}

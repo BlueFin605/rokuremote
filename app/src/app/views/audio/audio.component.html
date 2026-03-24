@@ -4,27 +4,10 @@
     <h2>Private Listening</h2>
   </div>
 
-  <div class="proxy-config">
-    <label for="proxy-url">Audio Proxy URL</label>
-    <div class="input-row">
-      <input
-        id="proxy-url"
-        type="text"
-        [(ngModel)]="proxyUrl"
-        placeholder="http://192.168.1.50:8080"
-        (keydown.enter)="checkProxy()"
-      />
-      <button (click)="checkProxy()" [disabled]="checking">
-        {{ checking ? 'Checking...' : 'Connect' }}
-      </button>
-    </div>
-    <p class="hint">Enter the IP of the machine running roku-proxy (desktop or ESP32)</p>
-  </div>
-
   @if (!checking && !proxyAvailable) {
     <div class="status-card error">
-      <p>Audio proxy not found at {{ proxyUrl }}</p>
-      <p class="hint">Make sure roku-proxy is running: <code>./roku-proxy --port 8080</code></p>
+      <p>Audio proxy not found.</p>
+      <p class="hint">Check proxy settings on the Setup page, or make sure roku-proxy is running.</p>
     </div>
   }
 
@@ -45,6 +28,23 @@
       @if (proxyStatus.state === 'streaming' || proxyStatus.state === 'connecting' || proxyStatus.state === 'authenticating') {
         <button class="stop-btn" (click)="stopListening()">Stop</button>
       }
+    </div>
+
+    <div class="latency-config">
+      <label for="max-latency">Audio Latency: {{ maxLatencyMs }}ms</label>
+      <input
+        id="max-latency"
+        type="range"
+        min="50"
+        max="500"
+        step="10"
+        [ngModel]="maxLatencyMs"
+        (ngModelChange)="onLatencyChange($event)"
+      />
+      <div class="range-labels">
+        <span>50ms</span>
+        <span>500ms</span>
+      </div>
     </div>
 
     @if (error) {

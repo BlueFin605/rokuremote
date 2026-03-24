@@ -61,7 +61,6 @@ export class LauncherComponent implements OnInit {
     this.roku.launchApp(app.id).subscribe({
       next: () => {
         this.activeAppId = app.id;
-        this.router.navigate(['/remote']);
       },
       error: (err) => {
         this.error = err;

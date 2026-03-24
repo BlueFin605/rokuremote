@@ -52,11 +52,17 @@ What's true, grounded in evidence. No recommendations.
 ### ECP Limitations
 
 - **Local network only** — no remote/internet control path.
-- **No push events / WebSocket** — must poll for state changes.
+- **No push events for control** — must poll for state changes. (Note: `/ecp-session` WebSocket exists for private listening signaling, but not for general control events.)
 - **Rate limiting** — devices become unresponsive if commands sent too rapidly; ~50-100ms between keypresses advisable.
 - **Text input is character-by-character** via `Lit_` prefix — slow and depends on on-screen keyboard being active.
 - **Volume/power keys** may not work on all streaming sticks (depends on HDMI-CEC/IR support).
 - **Device-info fields vary** across firmware versions and device models.
+- **No CORS headers** — Roku ECP responses do not include `Access-Control-Allow-Origin` headers. Browsers block direct cross-origin requests from a web app to `http://<roku-ip>:8060`. A local proxy is required to add CORS headers for browser-based control.
+
+### Mixed-Content Constraint
+
+- A web app served over **HTTPS** (e.g., from CloudFront) cannot make HTTP requests to a local network device — browsers block mixed-content requests.
+- **Resolution:** Serve the CloudFront distribution with `ViewerProtocolPolicy.ALLOW_ALL` so the user can access the app over HTTP, avoiding the mixed-content block. HTTPS remains available but is not forced.
 
 ## Device Discovery (SSDP)
 

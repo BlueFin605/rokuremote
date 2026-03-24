@@ -18,7 +18,7 @@ export interface ProxyStatus {
 })
 export class ProxyService {
   private static readonly STORAGE_KEY = 'proxy-url';
-  private static readonly DEFAULT_URL = 'http://localhost:8080';
+  private static readonly DEFAULT_URL = 'http://roku-proxy.local:8080';
   private proxyUrl: string;
 
   constructor(private http: HttpClient) {
@@ -29,9 +29,17 @@ export class ProxyService {
     return this.proxyUrl;
   }
 
+  getDefaultUrl(): string {
+    return ProxyService.DEFAULT_URL;
+  }
+
   setProxyUrl(url: string): void {
     this.proxyUrl = url;
     localStorage.setItem(ProxyService.STORAGE_KEY, url);
+  }
+
+  resetToDefault(): void {
+    this.setProxyUrl(ProxyService.DEFAULT_URL);
   }
 
   isAvailable(): Observable<boolean> {

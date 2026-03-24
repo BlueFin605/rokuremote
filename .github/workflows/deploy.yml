@@ -1,4 +1,4 @@
-name: Deploy to S3/CloudFront
+name: Build & Deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-web:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,3 +39,25 @@ jobs:
         run: |
           DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='rokuremote-pages-production.s3.ap-southeast-2.amazonaws.com'].Id" --output text)
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+
+  build-esp32:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ESP32 firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3
+          target: esp32
+          path: esp32
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: roku-proxy-esp32
+          path: |
+            esp32/build/roku-proxy-esp32.bin
+            esp32/build/bootloader/bootloader.bin
+            esp32/build/partition_table/partition-table.bin

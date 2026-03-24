@@ -6,25 +6,28 @@ Processes that must exist to make the north star real. Actors, stages, failure m
 
 ## Flow 0: First-Time Setup
 
-**Supports:** All phases — ECP must be enabled before anything works.
+**Supports:** All phases — ECP must be enabled and a proxy must be reachable before anything works.
 
 ### Actors
 - **User** — has physical access to the Roku and its TV
 - **Phone** — running the remote UI
+- **Proxy** — local network helper (desktop C++ app or ESP32) that forwards ECP requests with CORS headers and handles SSDP/audio
 - **Roku** — may be in Limited mode (default since OS 14.1)
 
 ### Happy Path
 
-1. User opens the remote for the first time.
-2. The remote prompts for the Roku's IP address.
-3. The remote attempts `GET /query/device-info` on the entered IP.
-4. **If it succeeds**: Roku is reachable and ECP is enabled. Save IP, proceed to remote.
-5. **If it fails with "Limited mode" error**: Show clear instructions to the user:
+1. User starts the proxy (desktop app or ESP32) on the same network as the Roku.
+2. User opens the remote in their phone's browser.
+3. The remote uses the configured proxy URL (defaulting to `http://roku-proxy.local:8080` for mDNS-enabled ESP32). The proxy URL is saved in localStorage and configurable via a collapsible "Proxy Settings" section on the setup page.
+4. If the proxy is reachable, the user can discover Roku devices automatically via the "Discover" button (SSDP via proxy). Otherwise, the user enters the Roku's IP manually.
+5. The remote attempts `GET /query/device-info` (via the proxy) on the entered/discovered IP.
+6. **If it succeeds**: Roku is reachable and ECP is enabled. Save IP. If ECP is fully enabled, proceed to app launcher view. If ECP is in limited mode, proceed to remote view (apps view is hidden).
+7. **If it fails with "Limited mode" error**: Show clear instructions to the user:
    - "Your Roku has External Control set to Limited. To use this remote:"
    - On your TV: **Settings > System > Advanced System Settings > Control by Mobile Apps > Network Access > Enabled**
    - Include a "Try Again" button.
-6. **If it fails with timeout/unreachable**: Show "Roku not found at this IP" with option to re-enter.
-7. Once connected, the remote remembers the IP for next time.
+8. **If it fails with timeout/unreachable**: Show "Roku not found at this IP" with option to re-enter.
+9. Once connected, the remote remembers both the proxy URL and Roku IP for next time.
 
 ### Why This Flow Exists
 
@@ -38,6 +41,7 @@ Since Roku OS 14.1, ECP defaults to Limited mode. Every third-party remote (Home
 | Roku is in Limited mode | Detect the specific error, show step-by-step instructions to enable |
 | Roku has External Control fully disabled | Same guidance but different setting path |
 | User doesn't know their Roku's IP | Show instructions: "On your Roku TV: Settings > Network > About" |
+| Proxy is not running or unreachable | Show "Proxy not found" with instructions to start the desktop proxy or ESP32 |
 | Roku firmware is very old (pre-ECP access control) | ECP works without any setting change — no issue |
 
 ---
@@ -87,12 +91,12 @@ Since Roku OS 14.1, ECP defaults to Limited mode. Every third-party remote (Home
 
 ### Happy Path
 
-1. User navigates to the app launcher view.
+1. After connecting, the user lands on the app launcher view (the default view when ECP is fully enabled).
 2. The remote fetches the list of installed apps and their icons from the Roku.
-3. Apps are displayed as a grid of tiles with icons and names.
+3. Apps are displayed as a responsive grid of tiles with icons and names (auto-fills columns based on screen width).
 4. User taps an app tile.
 5. The Roku launches that app. The TV switches to it.
-6. The remote returns to (or stays on) the control view so the user can navigate within the app.
+6. The app is highlighted as active in the grid. The user stays on the app launcher view.
 
 ### Failure Modes
 
@@ -112,37 +116,31 @@ Since Roku OS 14.1, ECP defaults to Limited mode. Every third-party remote (Home
 
 ### Actors
 - **User**, **Phone**, **Roku** (same as Flow 1)
-- **Audio Proxy** (if needed) — local device (ESP32 or similar) that receives RTP audio and forwards it to the phone
+- **Proxy** — local network helper (desktop C++ app or ESP32) that receives RTP audio and serves it to the phone browser
 
 ### Precondition
-- Flow 1 has completed — the remote is connected to a Roku.
+- Flow 0 has completed — the proxy is running and the remote is connected to a Roku.
 - The Roku supports private listening (`supports-private-listening` = true in device info).
 
 ### Happy Path
 
-1. User taps a "Private Listening" button on the remote.
-2. The remote authenticates with the Roku via WebSocket on `/ecp-session`.
-3. The remote tells the Roku where to send audio (IP and port of the listener).
-4. The Roku begins streaming Opus audio via RTP to the specified address.
-5. The listener decodes Opus to PCM and plays through the phone's audio output.
-6. User hears the TV audio in their headphones with acceptable lip-sync.
-7. User taps the button again to stop. The WebSocket closes, audio stops, Roku resumes normal audio output.
+1. User navigates to the Audio view (proxy URL is already configured on the setup page).
+2. User taps "Start Listening".
+3. The phone tells the proxy to start a private listening session with the Roku (`POST /start?roku=<ip>`).
+4. The proxy authenticates with the Roku via WebSocket on `/ecp-session`.
+5. The proxy tells the Roku to send audio to its own IP:port.
+6. The Roku begins streaming Opus audio via RTP to the proxy.
+7. The phone fetches the audio stream from the proxy (`GET /audio`), decodes Opus frames in the browser, and plays via Web Audio API.
+8. User hears the TV audio in their headphones with acceptable lip-sync. User can adjust latency via the slider.
+9. User taps "Stop Listening". The proxy tears down the session. Audio stops, Roku resumes normal audio output.
 
-### Open Question: Who Receives the RTP Stream?
+### Decision: Proxy Receives the RTP Stream
 
-The Roku sends RTP packets to an IP:port on the local network. The phone needs to receive and decode them. Two paths exist:
+The proxy (desktop C++ app or ESP32) receives RTP audio from the Roku and re-serves raw Opus frames to the phone over HTTP chunked transfer. The phone decodes Opus in the browser using a Wasm decoder (`opus-decoder`) and plays via Web Audio API. This preserves the "works in a browser" principle — no native app or Capacitor needed.
 
-**Path A — Phone directly receives RTP**
-- Phone listens on a UDP port for RTP packets.
-- Requires native UDP socket access (not available in browsers — needs Capacitor or native app).
-- Simplest architecture — no extra hardware.
+### Latency Control
 
-**Path B — ESP32 proxy**
-- ESP32 receives RTP, decodes Opus, re-serves audio to the phone over HTTP or WebSocket.
-- Phone plays audio via standard web audio APIs — works in any browser.
-- Adds hardware dependency but removes the need for a native app for audio.
-
-This is a design decision, not a flow decision. Both paths satisfy the same flow.
+The user can adjust audio latency via a slider (50–500ms, default 150ms). This controls the jitter buffer depth — lower values reduce delay but may cause audio dropouts on unstable networks, higher values add delay but smooth out jitter.
 
 ### Failure Modes
 
@@ -151,7 +149,7 @@ This is a design decision, not a flow decision. Both paths satisfy the same flow
 | Roku doesn't support private listening | Hide or disable the button, show explanation |
 | WebSocket authentication fails | Show error with suggestion to check firmware compatibility |
 | Audio stream starts but no sound is heard | Check audio output routing, show troubleshooting guidance |
-| Audio has unacceptable latency | Surface a latency indicator if detectable; this may be a hardware/network limitation |
+| Audio has unacceptable latency | User adjusts latency slider (50–500ms) to balance delay vs. stability |
 | User leaves the browser / phone locks screen | Behaviour depends on platform — may need to warn user that audio may stop (PWA limitation) |
 | Roku firmware update changes the auth protocol | Auth fails — show error, note that this depends on a reverse-engineered protocol |
 | Network interruption during streaming | Detect stream loss, show disconnected state, offer restart |

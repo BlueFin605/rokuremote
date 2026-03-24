@@ -1,0 +1,21 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "wifi_manager.cpp"
+        "http_server.cpp"
+        "roku_session.cpp"
+        "roku_auth.cpp"
+        "rtp_receiver.cpp"
+        "ssdp_discovery.cpp"
+    INCLUDE_DIRS "."
+    REQUIRES
+        esp_http_server
+        esp_wifi
+        esp_netif
+        nvs_flash
+        mbedtls
+        lwip
+        esp_event
+        esp_http_client
+        json
+)

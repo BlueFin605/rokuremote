@@ -1,0 +1,27 @@
+menu "Roku Proxy Configuration"
+
+    config PROXY_WIFI_SSID
+        string "Wi-Fi SSID"
+        default "YourSSID"
+        help
+            SSID of the Wi-Fi network to connect to.
+
+    config PROXY_WIFI_PASSWORD
+        string "Wi-Fi Password"
+        default "YourPassword"
+        help
+            Password for the Wi-Fi network.
+
+    config PROXY_HTTP_PORT
+        int "HTTP API Port"
+        default 8080
+        help
+            Port for the HTTP API server.
+
+    config PROXY_RTP_PORT
+        int "RTP Receive Port"
+        default 6970
+        help
+            UDP port for receiving RTP audio from the Roku.
+
+endmenu
