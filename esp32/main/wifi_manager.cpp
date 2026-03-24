@@ -4,12 +4,21 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "driver/uart.h"
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
 #include <cstring>
+#include <string>
 
 static const char* TAG = "wifi";
+static const char* NVS_NAMESPACE = "wifi_creds";
+static const char* NVS_KEY_SSID = "ssid";
+static const char* NVS_KEY_PASS = "password";
+static const gpio_num_t BOOT_BUTTON = GPIO_NUM_0;
 
 static EventGroupHandle_t s_wifi_event_group;
 static const int CONNECTED_BIT = BIT0;
@@ -44,6 +53,90 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+static bool load_credentials(std::string& ssid, std::string& password) {
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) {
+        return false;
+    }
+
+    char buf[128];
+    size_t len;
+
+    len = sizeof(buf);
+    if (nvs_get_str(handle, NVS_KEY_SSID, buf, &len) != ESP_OK) {
+        nvs_close(handle);
+        return false;
+    }
+    ssid = buf;
+
+    len = sizeof(buf);
+    if (nvs_get_str(handle, NVS_KEY_PASS, buf, &len) != ESP_OK) {
+        nvs_close(handle);
+        return false;
+    }
+    password = buf;
+
+    nvs_close(handle);
+    return !ssid.empty();
+}
+
+static void save_credentials(const std::string& ssid, const std::string& password) {
+    nvs_handle_t handle;
+    ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle));
+    ESP_ERROR_CHECK(nvs_set_str(handle, NVS_KEY_SSID, ssid.c_str()));
+    ESP_ERROR_CHECK(nvs_set_str(handle, NVS_KEY_PASS, password.c_str()));
+    ESP_ERROR_CHECK(nvs_commit(handle));
+    nvs_close(handle);
+    ESP_LOGI(TAG, "Credentials saved to NVS");
+}
+
+static std::string read_line_from_serial() {
+    std::string line;
+    while (true) {
+        uint8_t ch;
+        int len = uart_read_bytes(UART_NUM_0, &ch, 1, pdMS_TO_TICKS(100));
+        if (len > 0) {
+            if (ch == '\n' || ch == '\r') {
+                if (!line.empty()) return line;
+            } else {
+                line += static_cast<char>(ch);
+            }
+        }
+    }
+}
+
+static void prompt_credentials(std::string& ssid, std::string& password) {
+    printf("\n=================================\n");
+    printf("  Roku Proxy — Wi-Fi Setup\n");
+    printf("=================================\n\n");
+    printf("Enter Wi-Fi SSID: ");
+    fflush(stdout);
+    ssid = read_line_from_serial();
+    printf("%s\n", ssid.c_str());
+
+    printf("Enter Wi-Fi Password: ");
+    fflush(stdout);
+    password = read_line_from_serial();
+    printf("********\n");
+
+    printf("\nConnecting to '%s'...\n\n", ssid.c_str());
+}
+
+static bool boot_button_held() {
+    gpio_config_t cfg = {};
+    cfg.pin_bit_mask = 1ULL << BOOT_BUTTON;
+    cfg.mode = GPIO_MODE_INPUT;
+    cfg.pull_up_en = GPIO_PULLUP_ENABLE;
+    gpio_config(&cfg);
+
+    // Check if BOOT button is held low for 2 seconds
+    for (int i = 0; i < 20; i++) {
+        if (gpio_get_level(BOOT_BUTTON) != 0) return false;
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    return true;
+}
+
 void wifi_init_sta() {
     s_wifi_event_group = xEventGroupCreate();
 
@@ -59,18 +152,32 @@ void wifi_init_sta() {
     ESP_ERROR_CHECK(esp_event_handler_instance_register(
         IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, nullptr, nullptr));
 
+    // Check if BOOT button is held — reset credentials
+    if (boot_button_held()) {
+        ESP_LOGW(TAG, "BOOT button held — clearing saved Wi-Fi credentials");
+        wifi_clear_credentials();
+    }
+
+    std::string ssid, password;
+    if (!load_credentials(ssid, password)) {
+        prompt_credentials(ssid, password);
+        save_credentials(ssid, password);
+    } else {
+        ESP_LOGI(TAG, "Loaded saved credentials for '%s'", ssid.c_str());
+    }
+
     wifi_config_t wifi_config = {};
     strncpy(reinterpret_cast<char*>(wifi_config.sta.ssid),
-            CONFIG_PROXY_WIFI_SSID, sizeof(wifi_config.sta.ssid) - 1);
+            ssid.c_str(), sizeof(wifi_config.sta.ssid) - 1);
     strncpy(reinterpret_cast<char*>(wifi_config.sta.password),
-            CONFIG_PROXY_WIFI_PASSWORD, sizeof(wifi_config.sta.password) - 1);
+            password.c_str(), sizeof(wifi_config.sta.password) - 1);
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "Connecting to %s...", CONFIG_PROXY_WIFI_SSID);
+    ESP_LOGI(TAG, "Connecting to %s...", ssid.c_str());
 
     // Block until connected
     xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT,
@@ -85,4 +192,14 @@ std::string wifi_get_ip() {
         return std::string(buf);
     }
     return "0.0.0.0";
+}
+
+void wifi_clear_credentials() {
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) == ESP_OK) {
+        nvs_erase_all(handle);
+        nvs_commit(handle);
+        nvs_close(handle);
+        ESP_LOGI(TAG, "Wi-Fi credentials cleared");
+    }
 }

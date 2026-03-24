@@ -103,6 +103,19 @@ idf.py -p /dev/tty.usbserial-0001 flash monitor
 
 Once connected, the serial output shows the ESP32's IP address. Use that as the proxy URL in the app.
 
+### Flash from Pre-Built Binary
+
+If you have a pre-built firmware (e.g., from GitHub Actions), you can flash it directly with `esptool` without needing ESP-IDF:
+
+```bash
+esptool --chip esp32 --port COM3 --baud 460800 write_flash -z \
+  0x1000 bootloader/bootloader.bin \
+  0x8000 partition_table/partition-table.bin \
+  0x10000 roku-proxy-esp32.bin
+```
+
+Replace `COM3` with your serial port (`/dev/ttyUSB0` on Linux, `/dev/tty.usbserial-*` on macOS).
+
 ### Troubleshooting
 
 | Problem | Fix |
