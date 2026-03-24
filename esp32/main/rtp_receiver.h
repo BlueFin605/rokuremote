@@ -2,6 +2,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include <cstdint>
 #include <string>
 
@@ -29,6 +30,9 @@ private:
     volatile bool running_ = false;
     TaskHandle_t recv_task_ = nullptr;
     TaskHandle_t rtcp_task_ = nullptr;
+    EventGroupHandle_t task_events_ = nullptr;
+    static const int RECV_TASK_DONE = BIT0;
+    static const int RTCP_TASK_DONE = BIT1;
 
     FrameCallback on_frame_ = nullptr;
     void* cb_ctx_ = nullptr;

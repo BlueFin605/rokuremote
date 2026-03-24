@@ -7,6 +7,9 @@
 # Obsidian
 .obsidian/
 
+#flash files
+roku-proxy-esp32/
+
 # System files
 .DS_Store
 Thumbs.db
