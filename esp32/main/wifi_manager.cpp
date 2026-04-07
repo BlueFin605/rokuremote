@@ -6,7 +6,6 @@
 #include "esp_netif.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "driver/uart.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -94,14 +93,15 @@ static void save_credentials(const std::string& ssid, const std::string& passwor
 static std::string read_line_from_serial() {
     std::string line;
     while (true) {
-        uint8_t ch;
-        int len = uart_read_bytes(UART_NUM_0, &ch, 1, pdMS_TO_TICKS(100));
-        if (len > 0) {
-            if (ch == '\n' || ch == '\r') {
-                if (!line.empty()) return line;
-            } else {
-                line += static_cast<char>(ch);
-            }
+        int ch = fgetc(stdin);
+        if (ch == EOF) {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        }
+        if (ch == '\n' || ch == '\r') {
+            if (!line.empty()) return line;
+        } else {
+            line += static_cast<char>(ch);
         }
     }
 }

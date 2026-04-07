@@ -5,6 +5,9 @@ CONFIG_PROXY_WIFI_PASSWORD="YourPassword"
 # Flash size — XIAO ESP32-S3 has 8MB
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 
+# Console over USB-CDC (XIAO ESP32-S3 has native USB, no UART bridge)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
 # lwIP — need enough sockets for RTP, RTCP, SSDP, HTTP client, HTTP server
 CONFIG_LWIP_MAX_SOCKETS=16
 CONFIG_LWIP_SO_RCVBUF=y
