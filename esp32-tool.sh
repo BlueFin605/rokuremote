@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+esp#!/usr/bin/env bash
 set -euo pipefail
 
 COMMAND="${1:-flash-monitor}"
