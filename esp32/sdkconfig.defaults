@@ -8,6 +8,9 @@ CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 # Console over USB-CDC (XIAO ESP32-S3 has native USB, no UART bridge)
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
+# Main task stack — default 3584 is too small for Wi-Fi scan + prompt on the main task
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
 # lwIP — need enough sockets for RTP, RTCP, SSDP, HTTP client, HTTP server
 CONFIG_LWIP_MAX_SOCKETS=16
 CONFIG_LWIP_SO_RCVBUF=y
