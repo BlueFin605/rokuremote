@@ -41,6 +41,15 @@
 | Dimensions | 51.45mm x 23.37mm |
 | Form Factor | Breadboard-friendly, 2x15 pin rows |
 
+### Board-Specific Config
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Build target | `idf.py set-target esp32` | Base ESP32 chip |
+| Flash size | `CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y` (default) | 4MB flash |
+| Console | `CONFIG_ESP_CONSOLE_UART_DEFAULT=y` (default) | CP2102 USB-to-UART bridge |
+| Bootloader offset | `0x1000` | Base ESP32 standard |
+
 ## Roku
 - Roku Ultra (192.168.50.144)
 
@@ -84,9 +93,15 @@
 | Dimensions | 21mm x 17.5mm |
 | Form Factor | XIAO ultra-compact, castellated pads |
 
-### Notes
-- Build target: `idf.py set-target esp32s3`
-- Flash offsets: bootloader at 0x0 (not 0x1000 like base ESP32)
+### Board-Specific Config
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Build target | `idf.py set-target esp32s3` | ESP32-S3 chip |
+| Flash size | `CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y` | 8MB flash |
+| Console | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` | Native USB-C, no UART bridge |
+| Bootloader offset | `0x0` | S3 uses 0x0 (not 0x1000 like base ESP32) |
+| Main task stack | `CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192` | Wi-Fi scan arrays need headroom |
 
 # Boards Investigated but Not Suitable
 
