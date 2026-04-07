@@ -55,6 +55,34 @@ The monitor uses `screen` if available, otherwise falls back to `python3` with `
 
 If `screen` appears frozen or unresponsive, `Ctrl+A` then `\` force-kills it.
 
+## First-time Wi-Fi setup
+
+On first boot (or after a credential reset), the serial monitor will prompt for Wi-Fi configuration:
+
+1. The ESP32 scans for nearby networks and displays a numbered list:
+   ```
+   =================================
+     Roku Proxy — Wi-Fi Setup
+   =================================
+
+   Scanning for Wi-Fi networks...
+
+     #  SSID                              RSSI  Auth
+     ── ────────────────────────────────  ────  ────────
+      1 Mitchell_2.4Ghz                    -47  WPA2
+      2 Mitchell_5Ghz                      -52  WPA2
+      3 Neighbours_WiFi                    -78  WPA2
+
+   Enter Wi-Fi SSID (or number from list):
+   ```
+2. Type a **number** to select from the list (e.g., `1`), or type a **full SSID** manually
+3. Enter the Wi-Fi password
+4. Credentials are saved to NVS — the ESP32 will auto-connect on subsequent boots
+
+### Resetting Wi-Fi credentials
+
+Hold the **BOOT** button for 2 seconds during startup. The ESP32 will clear saved credentials and prompt again.
+
 ## Troubleshooting
 
 - **Permission denied on port:** Add yourself to the `dialout` group or use `sudo`

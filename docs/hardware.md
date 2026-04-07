@@ -1,4 +1,4 @@
-# Hardware
+# Hardware I have
 
 ## ESP32 Board
 
@@ -43,3 +43,61 @@
 
 ## Roku
 - Roku Ultra (192.168.50.144)
+
+# Hardware I have on Order
+
+## Seeed Studio XIAO ESP32-S3
+
+**XIAO ESP32-S3** (non-Sense variant, no camera)
+- **Source:** https://www.aliexpress.com/item/1005007341749305.html
+
+### Processor & Memory
+| Spec | Value |
+|------|-------|
+| MCU | ESP32-S3 (Xtensa dual-core 32-bit LX7) |
+| Clock Speed | Up to 240 MHz |
+| Flash | 8 MB |
+| SRAM | 512 KB |
+| PSRAM | 8 MB |
+
+### Connectivity
+| Spec | Value |
+|------|-------|
+| WiFi | 802.11 b/g/n (2.4 GHz) |
+| Bluetooth | 5.0 (BLE only, no Classic BT) |
+
+### GPIO & Peripherals
+| Spec | Value |
+|------|-------|
+| Digital I/O Pins | 11 usable |
+| ADC Channels | 9 (12-bit) |
+| UART | 1 |
+| I2C | 1 |
+| SPI | 1 |
+
+### Power & Physical
+| Spec | Value |
+|------|-------|
+| USB | USB-C (native USB on ESP32-S3) |
+| Input Voltage | 5V (USB or battery) |
+| Logic Level | 3.3V |
+| Dimensions | 21mm x 17.5mm |
+| Form Factor | XIAO ultra-compact, castellated pads |
+
+### Notes
+- Will need `idf.py set-target esp32s3` to retarget firmware build
+
+# Boards Investigated but Not Suitable
+
+## Seeed Studio XIAO ESP32-S3 Sense
+
+**XIAO ESP32-S3 Sense** (with OV2640 camera + microSD slot)
+- **Source:** https://a.aliexpress.com/_mPXwBA1
+
+Identical to the XIAO ESP32-S3 (same ESP32-S3 chip, 8MB PSRAM, 8MB flash, WiFi/BLE 5.0) but adds an OV2640 camera module and microSD card slot.
+
+### Why Not Suitable
+- Camera and microSD are unnecessary for RokuRemote (WiFi networking, SSDP, audio proxy)
+- Camera module consumes GPIO pins and draws additional power
+- More expensive for no project benefit
+- The non-Sense XIAO ESP32-S3 (on order) has identical networking/compute specs
