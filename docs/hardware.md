@@ -1,6 +1,6 @@
-# Hardware I have
+# Previous Hardware
 
-## ESP32 Board
+## ESP32 Board (replaced by XIAO ESP32-S3)
 
 **DOIT ESP32 DEVKIT V1** (ESP-WROOM-32 module)
 - **Source:** https://www.aliexpress.com/item/1005008503831020.html
@@ -44,11 +44,11 @@
 ## Roku
 - Roku Ultra (192.168.50.144)
 
-# Hardware I have on Order
+# Target Hardware
 
 ## Seeed Studio XIAO ESP32-S3
 
-**XIAO ESP32-S3** (non-Sense variant, no camera)
+**XIAO ESP32-S3** (non-Sense variant, no camera) — **primary target board**
 - **Source:** https://www.aliexpress.com/item/1005007341749305.html
 
 ### Processor & Memory
@@ -85,7 +85,8 @@
 | Form Factor | XIAO ultra-compact, castellated pads |
 
 ### Notes
-- Will need `idf.py set-target esp32s3` to retarget firmware build
+- Build target: `idf.py set-target esp32s3`
+- Flash offsets: bootloader at 0x0 (not 0x1000 like base ESP32)
 
 # Boards Investigated but Not Suitable
 

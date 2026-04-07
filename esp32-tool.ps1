@@ -22,8 +22,8 @@ function Flash {
     }
 
     Write-Host "Flashing to $Port..." -ForegroundColor Cyan
-    & $esptool --chip esp32 --port $Port --baud 460800 write-flash -z `
-        0x1000 $bootloader `
+    & $esptool --chip esp32s3 --port $Port --baud 460800 write-flash -z `
+        0x0 $bootloader `
         0x8000 $partition `
         0x10000 $app
 

@@ -29,8 +29,8 @@ flash() {
     done
 
     echo "Flashing to $PORT..."
-    $ESPTOOL --chip esp32 --port "$PORT" --baud 460800 write_flash -z \
-        0x1000 "$bootloader" \
+    $ESPTOOL --chip esp32s3 --port "$PORT" --baud 460800 write_flash -z \
+        0x0 "$bootloader" \
         0x8000 "$partition" \
         0x10000 "$app"
 

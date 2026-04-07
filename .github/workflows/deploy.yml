@@ -67,7 +67,7 @@ jobs:
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.3
-          target: esp32
+          target: esp32s3
           path: esp32
 
       - name: Upload firmware artifact
