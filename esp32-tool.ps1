@@ -3,7 +3,7 @@ param(
     [ValidateSet("flash", "monitor", "flash-monitor")]
     [string]$Command = "flash-monitor",
 
-    [string]$Port = "COM3",
+    [string]$Port = "COM4",
     [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32"
 )
 
