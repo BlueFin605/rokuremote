@@ -74,8 +74,8 @@ brew install cp210x-usbserial-driver
 
 **For CH340 (WCH driver):**
 ```bash
-# Download and install from: https://github.com/WCHSoftware/ch34xser_macos
-# Or download the .zip file, unzip, and run the installer
+# Download and install from: https://www.wch-ic.com/downloads/CH341SER_MAC_ZIP.html
+# Then download CH341SER_MAC.ZIP, unzip, and run the installer package
 ```
 
 After installation, you may need to **restart your Mac** for the drivers to take effect.
@@ -171,7 +171,7 @@ Common port names for the CP2102/CH340 on the DEVKIT V1:
 
 If nothing shows up, you may need the CP2102 or CH340 USB-serial driver:
 - **CP2102:** https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
-- **CH340:** https://github.com/WCHSoftware/ch34xser_macos
+- **CH340:** https://www.wch-ic.com/downloads/CH341SER_MAC_ZIP.html
 
 ## Serial monitor
 
@@ -246,7 +246,7 @@ You should see `(.venv)` at the start of your prompt.
 
 4. **Verify the USB driver installed:**
    - For CP2102: Check System Settings → Privacy & Security for any "blocked" installations
-   - For CH340: Re-download and reinstall from https://github.com/WCHSoftware/ch34xser_macos
+   - For CH340: Re-download and reinstall from https://www.wch-ic.com/downloads/CH341SER_MAC_ZIP.html
 
 5. **Check dmesg for driver errors:**
    ```bash
