@@ -71,7 +71,7 @@ The proxy exposes these endpoints:
 
 ## ESP32 Proxy
 
-The ESP32 firmware runs the same proxy on a microcontroller — plug it in, connect to Wi-Fi, and it's always available. It advertises itself as `roku-proxy.local` via mDNS, so the web app finds it automatically.
+The ESP32 firmware runs the same proxy on a microcontroller — plug it in, connect to Wi-Fi, and it's always available. It advertises itself as `roku-proxy.local` via mDNS and can also be reached as `roku-proxy` on routers that register DHCP hostnames.
 
 ### Flash the Firmware
 
@@ -134,10 +134,15 @@ Once connected, the serial output shows:
 ```
 Local IP: 192.168.1.x
 mDNS hostname: roku-proxy.local
-Roku proxy ready on http://roku-proxy.local:8080
+Roku proxy ready on http://roku-proxy.local:80
 ```
 
-Open `https://roku.bluefin605.com` on your phone — the app defaults to `http://roku-proxy.local:8080` and should connect automatically.
+Open `https://roku.bluefin605.com` on your phone.
+
+Recommended proxy URL order:
+1. `http://roku-proxy/`
+2. `http://roku-proxy.local/`
+3. `http://<device-ip>/`
 
 ### Flash from Pre-Built Binary
 
@@ -159,7 +164,7 @@ Replace `COM3` with your serial port (`/dev/ttyUSB0` on Linux, `/dev/tty.usbseri
 | No serial prompt after flashing | Press the EN/Reset button on the board |
 | Board not detected | Check USB cable (some are charge-only) and install serial driver |
 | Wi-Fi won't connect | ESP32 only supports 2.4 GHz Wi-Fi, not 5 GHz |
-| `roku-proxy.local` not resolving | Try the IP address shown in serial output instead |
+| `roku-proxy` not resolving | Try `http://roku-proxy.local/`, then the IP address shown in serial output |
 
 ## Infrastructure
 

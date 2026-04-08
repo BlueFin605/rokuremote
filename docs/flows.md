@@ -18,7 +18,7 @@ Processes that must exist to make the north star real. Actors, stages, failure m
 
 1. User starts the proxy (desktop app or ESP32) on the same network as the Roku.
 2. User opens the remote in their phone's browser.
-3. The remote uses the configured proxy URL (defaulting to `http://roku-proxy.local:8080` for mDNS-enabled ESP32). The proxy URL is saved in localStorage and configurable via a collapsible "Proxy Settings" section on the setup page.
+3. The remote uses the configured proxy URL (prefer `http://roku-proxy/`, then `http://roku-proxy.local/`, then device IP). The proxy URL is saved in localStorage and configurable via a collapsible "Proxy Settings" section on the setup page.
 4. If the proxy is reachable, the user can discover Roku devices automatically via the "Discover" button (SSDP via proxy). Otherwise, the user enters the Roku's IP manually.
 5. The remote attempts `GET /query/device-info` (via the proxy) on the entered/discovered IP.
 6. **If it succeeds**: Roku is reachable and ECP is enabled. Save IP. If ECP is fully enabled, proceed to app launcher view. If ECP is in limited mode, proceed to remote view (apps view is hidden).

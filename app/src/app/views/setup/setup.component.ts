@@ -22,6 +22,7 @@ export class SetupComponent implements OnInit {
 
   proxyUrl: string;
   showProxyConfig = false;
+  browserOrigin = '';
 
   constructor(
     private roku: RokuService,
@@ -29,6 +30,9 @@ export class SetupComponent implements OnInit {
     private router: Router,
   ) {
     this.proxyUrl = proxy.getProxyUrl();
+    if (typeof window !== 'undefined') {
+      this.browserOrigin = window.location.origin;
+    }
   }
 
   ngOnInit(): void {
@@ -103,5 +107,13 @@ export class SetupComponent implements OnInit {
     this.proxy.isAvailable().subscribe(available => {
       this.proxyAvailable = available;
     });
+  }
+
+  isSameOriginProxyMode(): boolean {
+    return this.proxy.getProxyUrl() === '';
+  }
+
+  effectiveProxyTarget(): string {
+    return this.isSameOriginProxyMode() ? this.browserOrigin : this.proxy.getProxyUrl();
   }
 }

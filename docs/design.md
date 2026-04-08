@@ -62,7 +62,7 @@ How it could be built. Contracts, architecture, verification. No implementation.
 
 ### First-Run Setup & Connection (Flow 0)
 
-- **Proxy URL**: Configurable via a collapsible "Proxy Settings" section on the setup page. Defaults to `http://roku-proxy.local:8080` (mDNS for ESP32). Users can override to any IP/port and reset to default. Saved in localStorage.
+- **Proxy URL**: Configurable via a collapsible "Proxy Settings" section on the setup page. Prefer `http://roku-proxy/` when the router registers DHCP hostnames, with fallbacks to `http://roku-proxy.local/` (mDNS) and device IP. Users can override to any IP/port and reset to default. Saved in localStorage.
 - **Roku discovery**: If the proxy is reachable, SSDP auto-discovery via "Discover Roku Devices" button. Manual IP entry remains as fallback.
 - **Connection check**: On connect, attempt `GET /query/device-info`.
   - Success with ECP enabled → Save IP, navigate to **app launcher** view (default landing page).

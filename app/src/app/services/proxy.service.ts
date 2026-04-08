@@ -18,19 +18,27 @@ export interface ProxyStatus {
 })
 export class ProxyService {
   private static readonly STORAGE_KEY = 'proxy-url';
-  private static readonly DEFAULT_URL = 'http://roku-proxy.local';
+  private static readonly DEFAULT_URL = 'http://roku-proxy';
+  private static readonly LEGACY_DEFAULT_URL = 'http://roku-proxy.local';
   private proxyUrl: string;
 
   constructor(private http: HttpClient) {
-    this.proxyUrl = localStorage.getItem(ProxyService.STORAGE_KEY) ?? ProxyService.detectDefaultUrl();
+    const savedUrl = localStorage.getItem(ProxyService.STORAGE_KEY);
+    this.proxyUrl = savedUrl ?? ProxyService.detectDefaultUrl();
+
+    // Seamlessly migrate older default to the new router DNS hostname.
+    if (this.proxyUrl === ProxyService.LEGACY_DEFAULT_URL) {
+      this.proxyUrl = ProxyService.DEFAULT_URL;
+      localStorage.setItem(ProxyService.STORAGE_KEY, this.proxyUrl);
+    }
   }
 
-  /** If served from the ESP32 (same-origin API available), use relative paths. Otherwise use mDNS default. */
+  /** If served from the ESP32 (same-origin API available), use relative paths. Otherwise use hostname default. */
   private static detectDefaultUrl(): string {
     if (typeof window !== 'undefined') {
       const host = window.location.hostname;
       // Same-origin when served from ESP32: mDNS name or local IP on port 80
-      if (host === 'roku-proxy.local' || (host.match(/^192\.168\./) && window.location.port === '')) {
+      if ((host === 'roku-proxy' || host === 'roku-proxy.local' || host.match(/^192\.168\./)) && window.location.port === '') {
         return '';
       }
     }
@@ -103,6 +111,6 @@ export class ProxyService {
   private isEsp32Origin(): boolean {
     if (typeof window === 'undefined') return false;
     const host = window.location.hostname;
-    return host === 'roku-proxy.local' || !!host.match(/^192\.168\./);
+    return host === 'roku-proxy' || host === 'roku-proxy.local' || !!host.match(/^192\.168\./);
   }
 }

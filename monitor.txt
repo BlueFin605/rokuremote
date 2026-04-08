@@ -1,0 +1,281 @@
+Flashing to /dev/cu.usbmodem2101...
+esptool.py v4.11.0
+Serial port /dev/cu.usbmodem2101
+Connecting...
+Chip is ESP32-S3 (QFN56) (revision v0.2)
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal is 40MHz
+USB mode: USB-Serial/JTAG
+MAC: 1c:db:d4:44:4d:28
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00000000 to 0x00005fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x00010000 to 0x0014cfff...
+Compressed 20928 bytes to 12926...
+Writing at 0x00000000... (100 %)
+Wrote 20928 bytes (12926 compressed) at 0x00000000 in 0.3 seconds (effective 520.7 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 105...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (105 compressed) at 0x00008000 in 0.0 seconds (effective 594.5 kbit/s)...
+Hash of data verified.
+Compressed 1295744 bytes to 894291...
+Writing at 0x00010000... (1 %)
+Writing at 0x0001ce63... (3 %)
+Writing at 0x000283d0... (5 %)
+Writing at 0x0002c35e... (7 %)
+Writing at 0x00030359... (9 %)
+Writing at 0x00034354... (10 %)
+Writing at 0x000382c7... (12 %)
+Writing at 0x0003edd3... (14 %)
+Writing at 0x0004305c... (16 %)
+Writing at 0x0004743f... (18 %)
+Writing at 0x0004b9f8... (20 %)
+Writing at 0x0004fa41... (21 %)
+Writing at 0x00053a3c... (23 %)
+Writing at 0x00057a37... (25 %)
+Writing at 0x0005ba32... (27 %)
+Writing at 0x0005fa2d... (29 %)
+Writing at 0x00063a28... (30 %)
+Writing at 0x0006799b... (32 %)
+Writing at 0x0006da8a... (34 %)
+Writing at 0x00072970... (36 %)
+Writing at 0x00079b28... (38 %)
+Writing at 0x000838a5... (40 %)
+Writing at 0x00089ccc... (41 %)
+Writing at 0x0008f896... (43 %)
+Writing at 0x000955c3... (45 %)
+Writing at 0x0009b978... (47 %)
+Writing at 0x000a178b... (49 %)
+Writing at 0x000a71b3... (50 %)
+Writing at 0x000ace82... (52 %)
+Writing at 0x000b2c75... (54 %)
+Writing at 0x000b8b6e... (56 %)
+Writing at 0x000bf5a8... (58 %)
+Writing at 0x000c51fe... (60 %)
+Writing at 0x000cad5f... (61 %)
+Writing at 0x000d149b... (63 %)
+Writing at 0x000d7197... (65 %)
+Writing at 0x000dd044... (67 %)
+Writing at 0x000e20af... (69 %)
+Writing at 0x000e6faa... (70 %)
+Writing at 0x000ec33c... (72 %)
+Writing at 0x000f1744... (74 %)
+Writing at 0x000f688a... (76 %)
+Writing at 0x000fbaaa... (78 %)
+Writing at 0x001017ff... (80 %)
+Writing at 0x00107047... (81 %)
+Writing at 0x0010cd4d... (83 %)
+Writing at 0x00112a57... (85 %)
+Writing at 0x00117ecd... (87 %)
+Writing at 0x0011dc65... (89 %)
+Writing at 0x001283fa... (90 %)
+Writing at 0x00130718... (92 %)
+Writing at 0x00136686... (94 %)
+Writing at 0x0013ccc5... (96 %)
+Writing at 0x001432ae... (98 %)
+Writing at 0x00148dbd... (100 %)
+Wrote 1295744 bytes (894291 compressed) at 0x00010000 in 8.2 seconds (effective 1270.7 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Flash complete.
+Opening serial monitor on /dev/cu.usbmodem2101 at 115200 baud. Press Ctrl+C to exit.
+Flashing to /dev/cu.usbmodem2101...
+esptool.py v4.11.0
+Serial port /dev/cu.usbmodem2101
+
+A fatal error occurred: Could not open /dev/cu.usbmodem2101, the port is busy or doesn't exist.
+([Errno 16] could not open port /dev/cu.usbmodem2101: [Errno 16] Resource busy: '/dev/cu.usbmodem2101')
+
+Flashing to /dev/cu.usbmodem2101...
+esptool.py v4.11.0
+Serial port /dev/cu.usbmodem2101
+
+A fatal error occurred: Could not open /dev/cu.usbmodem2101, the port is busy or doesn't exist.
+([Errno 16] could not open port /dev/cu.usbmodem2101: [Errno 16] Resource busy: '/dev/cu.usbmodem2101')
+
+Flashing to /dev/cu.usbmodem2101...
+esptool.py v4.11.0
+Serial port /dev/cu.usbmodem2101
+Connecting...
+Chip is ESP32-S3 (QFN56) (revision v0.2)
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal is 40MHz
+USB mode: USB-Serial/JTAG
+MAC: 1c:db:d4:44:4d:28
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00000000 to 0x00005fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x00010000 to 0x0014cfff...
+Compressed 20928 bytes to 12926...
+Writing at 0x00000000... (100 %)
+Wrote 20928 bytes (12926 compressed) at 0x00000000 in 0.3 seconds (effective 520.9 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 105...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (105 compressed) at 0x00008000 in 0.0 seconds (effective 596.0 kbit/s)...
+Hash of data verified.
+Compressed 1295952 bytes to 894485...
+Writing at 0x00010000... (1 %)
+Writing at 0x0001ce5c... (3 %)
+Writing at 0x000283cd... (5 %)
+Writing at 0x0002c359... (7 %)
+Writing at 0x00030354... (9 %)
+Writing at 0x0003434f... (10 %)
+Writing at 0x000382c2... (12 %)
+Writing at 0x0003edce... (14 %)
+Writing at 0x00043056... (16 %)
+Writing at 0x00047436... (18 %)
+Writing at 0x0004b9f1... (20 %)
+Writing at 0x0004fa3c... (21 %)
+Writing at 0x00053a37... (23 %)
+Writing at 0x00057a32... (25 %)
+Writing at 0x0005ba2d... (27 %)
+Writing at 0x0005fa28... (29 %)
+Writing at 0x00063a23... (30 %)
+Writing at 0x00067995... (32 %)
+Writing at 0x0006da51... (34 %)
+Writing at 0x0007294f... (36 %)
+Writing at 0x00079921... (38 %)
+Writing at 0x00083803... (40 %)
+Writing at 0x00089bce... (41 %)
+Writing at 0x0008f7d3... (43 %)
+Writing at 0x00095544... (45 %)
+Writing at 0x0009b90a... (47 %)
+Writing at 0x000a16dc... (49 %)
+Writing at 0x000a711e... (50 %)
+Writing at 0x000ace1c... (52 %)
+Writing at 0x000b2bf9... (54 %)
+Writing at 0x000b8acb... (56 %)
+Writing at 0x000bf541... (58 %)
+Writing at 0x000c517a... (60 %)
+Writing at 0x000cacba... (61 %)
+Writing at 0x000d1425... (63 %)
+Writing at 0x000d6fd0... (65 %)
+Writing at 0x000dcfe2... (67 %)
+Writing at 0x000e2077... (69 %)
+Writing at 0x000e6f6c... (70 %)
+Writing at 0x000ec2f3... (72 %)
+Writing at 0x000f16f9... (74 %)
+Writing at 0x000f6837... (76 %)
+Writing at 0x000fba45... (78 %)
+Writing at 0x00101766... (80 %)
+Writing at 0x00106fef... (81 %)
+Writing at 0x0010ccb1... (83 %)
+Writing at 0x001129fb... (85 %)
+Writing at 0x00117e79... (87 %)
+Writing at 0x0011dc14... (89 %)
+Writing at 0x001283ab... (90 %)
+Writing at 0x001306c9... (92 %)
+Writing at 0x0013655e... (94 %)
+Writing at 0x0013cc72... (96 %)
+Writing at 0x0014329c... (98 %)
+Writing at 0x00148d8e... (100 %)
+Wrote 1295952 bytes (894485 compressed) at 0x00010000 in 8.2 seconds (effective 1269.5 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Flash complete.
+Opening serial monitor on /dev/cu.usbmodem2101 at 115200 baud. Press Ctrl+C to exit.
+Flashing to /dev/cu.usbmodem2101...
+esptool.py v4.11.0
+Serial port /dev/cu.usbmodem2101
+Connecting...
+Chip is ESP32-S3 (QFN56) (revision v0.2)
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal is 40MHz
+USB mode: USB-Serial/JTAG
+MAC: 1c:db:d4:44:4d:28
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00000000 to 0x00005fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x00010000 to 0x0014cfff...
+Compressed 20928 bytes to 12925...
+Writing at 0x00000000... (100 %)
+Wrote 20928 bytes (12925 compressed) at 0x00000000 in 0.3 seconds (effective 519.7 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 105...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (105 compressed) at 0x00008000 in 0.0 seconds (effective 614.3 kbit/s)...
+Hash of data verified.
+Compressed 1296000 bytes to 894635...
+Writing at 0x00010000... (1 %)
+Writing at 0x0001ce53... (3 %)
+Writing at 0x000283c9... (5 %)
+Writing at 0x0002c356... (7 %)
+Writing at 0x00030351... (9 %)
+Writing at 0x0003434c... (10 %)
+Writing at 0x000382bf... (12 %)
+Writing at 0x0003edcb... (14 %)
+Writing at 0x00043053... (16 %)
+Writing at 0x00047433... (18 %)
+Writing at 0x0004b9ee... (20 %)
+Writing at 0x0004fa38... (21 %)
+Writing at 0x00053a33... (23 %)
+Writing at 0x00057a2e... (25 %)
+Writing at 0x0005ba29... (27 %)
+Writing at 0x0005fa24... (29 %)
+Writing at 0x00063a1f... (30 %)
+Writing at 0x00067991... (32 %)
+Writing at 0x0006da4e... (34 %)
+Writing at 0x0007294b... (36 %)
+Writing at 0x00079972... (38 %)
+Writing at 0x000837ec... (40 %)
+Writing at 0x00089c0b... (41 %)
+Writing at 0x0008f7a5... (43 %)
+Writing at 0x000954e1... (45 %)
+Writing at 0x0009b8a2... (47 %)
+Writing at 0x000a1687... (49 %)
+Writing at 0x000a70ca... (50 %)
+Writing at 0x000acdab... (52 %)
+Writing at 0x000b2ba5... (54 %)
+Writing at 0x000b8a71... (56 %)
+Writing at 0x000bf4d0... (58 %)
+Writing at 0x000c50e1... (60 %)
+Writing at 0x000cac16... (61 %)
+Writing at 0x000d138f... (63 %)
+Writing at 0x000d6f68... (65 %)
+Writing at 0x000dcf24... (67 %)
+Writing at 0x000e1ff7... (69 %)
+Writing at 0x000e6eda... (70 %)
+Writing at 0x000ec262... (72 %)
+Writing at 0x000f168d... (74 %)
+Writing at 0x000f67b2... (76 %)
+Writing at 0x000fb9a7... (78 %)
+Writing at 0x00101669... (80 %)
+Writing at 0x00106f27... (81 %)
+Writing at 0x0010cba2... (83 %)
+Writing at 0x00112978... (85 %)
+Writing at 0x00117df0... (87 %)
+Writing at 0x0011dadf... (89 %)
+Writing at 0x001282f9... (90 %)
+Writing at 0x0013063c... (92 %)
+Writing at 0x00136434... (94 %)
+Writing at 0x0013cbb1... (96 %)
+Writing at 0x001431ef... (98 %)
+Writing at 0x00148cd0... (100 %)
+Wrote 1296000 bytes (894635 compressed) at 0x00010000 in 8.3 seconds (effective 1255.7 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Flash complete.
+Opening serial monitor on /dev/cu.usbmodem2101 at 115200 baud. Press Ctrl+C to exit.
