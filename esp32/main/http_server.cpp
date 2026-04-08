@@ -254,6 +254,17 @@ static esp_err_t status_handler(httpd_req_t* req) {
     return ret;
 }
 
+// Check if the client TCP connection is still alive (non-blocking).
+// Returns false if the peer has closed or reset the connection.
+static bool client_connected(int sockfd) {
+    if (sockfd < 0) return false;
+    char c;
+    int ret = recv(sockfd, &c, 1, MSG_PEEK | MSG_DONTWAIT);
+    if (ret == 0) return false;                              // graceful close
+    if (ret < 0 && errno != EWOULDBLOCK && errno != EAGAIN) return false;
+    return true;
+}
+
 static esp_err_t audio_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "application/octet-stream");
     set_cors_headers(req);
@@ -270,7 +281,13 @@ static esp_err_t audio_handler(httpd_req_t* req) {
     AudioFrame frame;
 
     while (true) {
-        uint16_t len = g_audio_buffer.pop(frame, 200);
+        // Detect client disconnect quickly so the httpd task is freed for
+        // new connections.  Without this the single-threaded httpd blocks
+        // until the next send fails (which can take many seconds via TCP
+        // buffering), causing ERR_EMPTY_RESPONSE for subsequent clients.
+        if (!client_connected(sockfd)) break;
+
+        uint16_t len = g_audio_buffer.pop(frame, 100);
         if (len > 0) {
             // Pack prefix + frame into single buffer to avoid two TCP writes
             send_buf[0] = static_cast<uint8_t>((len >> 8) & 0xFF);
