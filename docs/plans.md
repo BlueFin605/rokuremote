@@ -61,7 +61,7 @@ All truth statements verified. Angular app in `app/`, builds clean, accessible f
 
 ## ~~Plan 3: Connect & Setup~~ ✅ COMPLETE
 
-All truth statements verified. Setup view with IP entry, Limited mode detection, localStorage persistence, auto-reconnect. Proxy URL configurable via collapsible "Proxy Settings" section (default: `http://roku-proxy.local` for ESP32 mDNS, with reset-to-default button).
+All truth statements verified. Setup view with IP entry, Limited mode detection, localStorage persistence, auto-reconnect. Proxy URL configurable via collapsible "Proxy Settings" section (preferred: `http://roku-proxy/`, fallback: `http://roku-proxy.local/`, with reset-to-default button).
 
 ---
 

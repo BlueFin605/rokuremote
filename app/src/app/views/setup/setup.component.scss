@@ -246,6 +246,11 @@
       margin-top: 0.5rem;
       font-size: 0.85rem;
       color: #888;
+
+      &.mode {
+        margin-top: 0;
+        margin-bottom: 0.35rem;
+      }
     }
   }
 }
