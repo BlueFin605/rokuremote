@@ -1,22 +1,73 @@
-esp#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 COMMAND="${1:-flash-monitor}"
-PORT="${2:-/dev/cu.usbserial-1410}"
+PORT_ARG="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-FIRMWARE_PATH="${3:-$SCRIPT_DIR/roku-proxy-esp32}"
+FIRMWARE_PATH_ARG="${3:-}"
 
-# Find esptool — prefer esptool.py on PATH, fall back to common install locations
-if command -v esptool.py &>/dev/null; then
-    ESPTOOL="esptool.py"
-elif command -v esptool &>/dev/null; then
-    ESPTOOL="esptool"
+resolve_firmware_path() {
+    # Prefer local ESP-IDF build output if present, fall back to downloaded artifact folder.
+    if [[ -n "$FIRMWARE_PATH_ARG" ]]; then
+        printf '%s\n' "$FIRMWARE_PATH_ARG"
+        return
+    fi
+
+    if [[ -d "$SCRIPT_DIR/esp32/build" ]]; then
+        printf '%s\n' "$SCRIPT_DIR/esp32/build"
+        return
+    fi
+
+    printf '%s\n' "$SCRIPT_DIR/roku-proxy-esp32"
+}
+
+FIRMWARE_PATH="$(resolve_firmware_path)"
+
+detect_port() {
+    # On XIAO ESP32-S3/macOS, native USB generally appears as /dev/cu.usbmodem*
+    local ports=()
+    local p
+
+    shopt -s nullglob
+    for p in /dev/cu.usbmodem*; do
+        ports+=("$p")
+    done
+    if [[ ${#ports[@]} -eq 0 ]]; then
+        for p in /dev/cu.usbserial*; do
+            ports+=("$p")
+        done
+    fi
+    shopt -u nullglob
+
+    if [[ ${#ports[@]} -eq 0 ]]; then
+        echo "Error: No serial ports found (/dev/cu.usbmodem* or /dev/cu.usbserial*)." >&2
+        exit 1
+    fi
+
+    printf '%s\n' "${ports[0]}"
+}
+
+if [[ -n "$PORT_ARG" ]]; then
+    PORT="$PORT_ARG"
 else
-    echo "Error: esptool not found. Install with: pip install esptool" >&2
-    exit 1
+    PORT="$(detect_port)"
 fi
 
+ensure_esptool() {
+    # Find esptool — prefer esptool.py on PATH
+    if command -v esptool.py &>/dev/null; then
+        ESPTOOL="esptool.py"
+    elif command -v esptool &>/dev/null; then
+        ESPTOOL="esptool"
+    else
+        echo "Error: esptool not found. Install with: pip install esptool" >&2
+        exit 1
+    fi
+}
+
 flash() {
+    ensure_esptool
+
     local bootloader="$FIRMWARE_PATH/bootloader/bootloader.bin"
     local partition="$FIRMWARE_PATH/partition_table/partition-table.bin"
     local app="$FIRMWARE_PATH/roku-proxy-esp32.bin"
@@ -27,6 +78,16 @@ flash() {
             exit 1
         fi
     done
+
+    # Fail fast if a non-S3 image set is being flashed to ESP32-S3 hardware.
+    local image_type
+    image_type="$($ESPTOOL --chip auto image_info "$bootloader" 2>/dev/null | awk -F': ' '/Detected image type:/ {print $2; exit}')"
+    if [[ "$image_type" != "ESP32-S3" ]]; then
+        echo "Error: bootloader image type is '$image_type' (expected 'ESP32-S3')." >&2
+        echo "Use ESP32-S3 artifacts (build in esp32/ with 'idf.py set-target esp32s3 && idf.py build')," >&2
+        echo "or pass the correct firmware path as the 3rd argument." >&2
+        exit 1
+    fi
 
     echo "Flashing to $PORT..."
     $ESPTOOL --chip esp32s3 --port "$PORT" --baud 460800 write_flash -z \
@@ -71,8 +132,8 @@ case "$COMMAND" in
     flash-monitor) flash; sleep 2; monitor ;;
     *)
         echo "Usage: $0 [flash|monitor|flash-monitor] [port] [firmware-path]"
-        echo "  port defaults to /dev/cu.usbserial-0001"
-        echo "  firmware-path defaults to ~/Downloads/roku-proxy-esp32"
+        echo "  port defaults to auto-detected /dev/cu.usbmodem* (fallback /dev/cu.usbserial*)"
+        echo "  firmware-path defaults to $SCRIPT_DIR/esp32/build if present, else $SCRIPT_DIR/roku-proxy-esp32"
         exit 1
         ;;
 esac
