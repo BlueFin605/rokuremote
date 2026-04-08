@@ -6,7 +6,6 @@
 #include "esp_netif.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "driver/uart.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -94,14 +93,15 @@ static void save_credentials(const std::string& ssid, const std::string& passwor
 static std::string read_line_from_serial() {
     std::string line;
     while (true) {
-        uint8_t ch;
-        int len = uart_read_bytes(UART_NUM_0, &ch, 1, pdMS_TO_TICKS(100));
-        if (len > 0) {
-            if (ch == '\n' || ch == '\r') {
-                if (!line.empty()) return line;
-            } else {
-                line += static_cast<char>(ch);
-            }
+        int ch = fgetc(stdin);
+        if (ch == EOF) {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        }
+        if (ch == '\n' || ch == '\r') {
+            if (!line.empty()) return line;
+        } else {
+            line += static_cast<char>(ch);
         }
     }
 }
@@ -220,6 +220,10 @@ void wifi_init_sta() {
     ESP_ERROR_CHECK(esp_event_handler_instance_register(
         IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, nullptr, nullptr));
 
+    // Start Wi-Fi radio in STA mode — needed before scanning or connecting
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
     // Check if BOOT button is held — reset credentials
     if (boot_button_held()) {
         ESP_LOGW(TAG, "BOOT button held — clearing saved Wi-Fi credentials");
@@ -241,9 +245,8 @@ void wifi_init_sta() {
             password.c_str(), sizeof(wifi_config.sta.password) - 1);
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    esp_wifi_connect();
 
     ESP_LOGI(TAG, "Connecting to %s...", ssid.c_str());
 

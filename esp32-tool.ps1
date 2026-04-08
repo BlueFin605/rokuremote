@@ -3,7 +3,7 @@ param(
     [ValidateSet("flash", "monitor", "flash-monitor")]
     [string]$Command = "flash-monitor",
 
-    [string]$Port = "COM3",
+    [string]$Port = "COM4",
     [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32"
 )
 
@@ -22,8 +22,8 @@ function Flash {
     }
 
     Write-Host "Flashing to $Port..." -ForegroundColor Cyan
-    & $esptool --chip esp32 --port $Port --baud 460800 write-flash -z `
-        0x1000 $bootloader `
+    & $esptool --chip esp32s3 --port $Port --baud 460800 write-flash -z `
+        0x0 $bootloader `
         0x8000 $partition `
         0x10000 $app
 
@@ -36,30 +36,64 @@ function Flash {
 
 function Monitor {
     Write-Host "Opening serial monitor on $Port at 115200 baud. Press Ctrl+C to exit." -ForegroundColor Cyan
-
-    $serial = New-Object System.IO.Ports.SerialPort $Port, 115200
-    $serial.ReadTimeout = 500
-    $serial.DtrEnable = $true
-    $serial.Open()
+    Write-Host "(Auto-reconnects on USB disconnect)" -ForegroundColor DarkGray
 
     try {
         while ($true) {
-            try {
-                $line = $serial.ReadLine()
-                Write-Host $line
-            } catch [System.TimeoutException] {
-                # No data, keep waiting
+            # Wait for port to be available
+            while (-not [System.IO.Ports.SerialPort]::GetPortNames().Contains($Port)) {
+                Start-Sleep -Milliseconds 500
             }
 
-            # Check for user input to send to ESP32
-            if ([Console]::KeyAvailable) {
-                $key = [Console]::ReadLine()
-                $serial.WriteLine($key)
+            $serial = New-Object System.IO.Ports.SerialPort $Port, 115200
+            $serial.ReadTimeout = 100
+            $serial.DtrEnable = $false
+            $serial.RtsEnable = $false
+
+            try {
+                $serial.Open()
+                Write-Host "--- Connected to $Port ---" -ForegroundColor Green
+
+                while ($serial.IsOpen) {
+                    # Read any available data from ESP32
+                    try {
+                        $available = $serial.BytesToRead
+                        if ($available -gt 0) {
+                            $buf = $serial.ReadExisting()
+                            Write-Host -NoNewline $buf
+                        }
+                    } catch [System.TimeoutException] {
+                        # No data
+                    } catch {
+                        # Port disconnected
+                        break
+                    }
+
+                    # Check for user input to send to ESP32
+                    if ([Console]::KeyAvailable) {
+                        $key = [Console]::ReadKey($true)
+                        if ($key.Key -eq 'Enter') {
+                            $serial.Write("`r`n")
+                            Write-Host ""
+                        } else {
+                            $serial.Write($key.KeyChar.ToString())
+                        }
+                    }
+
+                    Start-Sleep -Milliseconds 10
+                }
+            } catch {
+                # Connection lost or failed to open
+            } finally {
+                if ($serial.IsOpen) { $serial.Close() }
+                $serial.Dispose()
             }
+
+            Write-Host "`n--- Disconnected, waiting for $Port ---" -ForegroundColor Yellow
+            Start-Sleep -Seconds 1
         }
     } finally {
-        $serial.Close()
-        Write-Host "Serial port closed." -ForegroundColor Yellow
+        Write-Host "Serial monitor closed." -ForegroundColor Yellow
     }
 }
 

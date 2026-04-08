@@ -131,7 +131,7 @@ ESP-IDF project in `esp32/` with all proxy functionality ported:
 - **Audio buffer**: FreeRTOS queue (100 frames) replacing std::deque + mutex (`audio_buffer.h`)
 - **Config**: Kconfig menuconfig for Wi-Fi credentials, HTTP port, RTP port
 
-Build: `cd esp32 && idf.py set-target esp32 && idf.py menuconfig && idf.py build`
+Build: `cd esp32 && idf.py set-target esp32s3 && idf.py menuconfig && idf.py build`
 Flash: `idf.py -p /dev/ttyUSB0 flash monitor`
 
 ### Truth Statements

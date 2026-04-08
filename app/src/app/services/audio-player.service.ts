@@ -65,41 +65,51 @@ export class AudioPlayerService {
   }
 
   private async streamAudio(url: string): Promise<void> {
-    try {
-      const response = await fetch(url, { signal: this.abortController!.signal });
-      const reader = response.body!.getReader();
-      let buffer = new Uint8Array(0);
+    const maxRetries = 3;
+    const retryDelay = 1000;
 
-      while (this._isPlaying) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    for (let attempt = 0; attempt <= maxRetries && this._isPlaying; attempt++) {
+      try {
+        const response = await fetch(url, { signal: this.abortController!.signal });
+        const reader = response.body!.getReader();
+        let buffer = new Uint8Array(0);
 
-        // Append new data to buffer
-        const newBuf = new Uint8Array(buffer.length + value.length);
-        newBuf.set(buffer);
-        newBuf.set(value, buffer.length);
-        buffer = newBuf;
+        while (this._isPlaying) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        // Process complete frames (2-byte length prefix + frame data)
-        while (buffer.length >= 2) {
-          const frameLen = (buffer[0] << 8) | buffer[1];
+          // Append new data to buffer
+          const newBuf = new Uint8Array(buffer.length + value.length);
+          newBuf.set(buffer);
+          newBuf.set(value, buffer.length);
+          buffer = newBuf;
 
-          if (frameLen === 0) {
-            // Keepalive — skip
-            buffer = buffer.slice(2);
-            continue;
+          // Process complete frames (2-byte length prefix + frame data)
+          while (buffer.length >= 2) {
+            const frameLen = (buffer[0] << 8) | buffer[1];
+
+            if (frameLen === 0) {
+              // Keepalive — skip
+              buffer = buffer.slice(2);
+              continue;
+            }
+
+            if (buffer.length < 2 + frameLen) break; // wait for more data
+
+            const frame = buffer.slice(2, 2 + frameLen);
+            buffer = buffer.slice(2 + frameLen);
+
+            this.decodeAndPlay(frame);
           }
-
-          if (buffer.length < 2 + frameLen) break; // wait for more data
-
-          const frame = buffer.slice(2, 2 + frameLen);
-          buffer = buffer.slice(2 + frameLen);
-
-          this.decodeAndPlay(frame);
         }
-      }
-    } catch (e: any) {
-      if (e.name !== 'AbortError') {
+        return; // Stream ended normally
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
+        if (attempt < maxRetries) {
+          console.warn(`Audio stream attempt ${attempt + 1} failed, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
         console.error('Audio stream error:', e);
       }
     }

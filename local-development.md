@@ -143,7 +143,7 @@ The `esp32/` directory contains the same proxy ported to run on an ESP32 microco
 cd esp32
 
 # Set the target chip (run once)
-idf.py set-target esp32       # or esp32s3, esp32c3, etc.
+idf.py set-target esp32s3
 
 # Configure Wi-Fi credentials and ports
 idf.py menuconfig

@@ -27,6 +27,7 @@ static AudioBuffer g_audio_buffer;
 static volatile roku::SessionState g_current_state = roku::SessionState::Idle;
 static char g_last_error[128] = {};
 static httpd_handle_t g_server = nullptr;
+static httpd_handle_t g_audio_server = nullptr;
 
 // ---- Helpers ----
 
@@ -253,6 +254,17 @@ static esp_err_t status_handler(httpd_req_t* req) {
     return ret;
 }
 
+// Check if the client TCP connection is still alive (non-blocking).
+// Returns false if the peer has closed or reset the connection.
+static bool client_connected(int sockfd) {
+    if (sockfd < 0) return false;
+    char c;
+    int ret = recv(sockfd, &c, 1, MSG_PEEK | MSG_DONTWAIT);
+    if (ret == 0) return false;                              // graceful close
+    if (ret < 0 && errno != EWOULDBLOCK && errno != EAGAIN) return false;
+    return true;
+}
+
 static esp_err_t audio_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "application/octet-stream");
     set_cors_headers(req);
@@ -269,7 +281,13 @@ static esp_err_t audio_handler(httpd_req_t* req) {
     AudioFrame frame;
 
     while (true) {
-        uint16_t len = g_audio_buffer.pop(frame, 200);
+        // Detect client disconnect quickly so the httpd task is freed for
+        // new connections.  Without this the single-threaded httpd blocks
+        // until the next send fails (which can take many seconds via TCP
+        // buffering), causing ERR_EMPTY_RESPONSE for subsequent clients.
+        if (!client_connected(sockfd)) break;
+
+        uint16_t len = g_audio_buffer.pop(frame, 100);
         if (len > 0) {
             // Pack prefix + frame into single buffer to avoid two TCP writes
             send_buf[0] = static_cast<uint8_t>((len >> 8) & 0xFF);
@@ -398,8 +416,6 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
     config.max_uri_handlers = 20;
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.lru_purge_enable = true;
-    // Allow enough open sockets for /audio streaming + other requests
-    // Audio stream holds 1 socket long-term; need headroom for status/stop/roku proxy
     config.max_open_sockets = 7;
 
     esp_err_t err = httpd_start(&g_server, &config);
@@ -456,15 +472,6 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
     };
     httpd_register_uri_handler(g_server, &status_uri);
 
-    // GET /api/audio
-    httpd_uri_t audio_uri = {
-        .uri = "/api/audio",
-        .method = HTTP_GET,
-        .handler = audio_handler,
-        .user_ctx = nullptr
-    };
-    httpd_register_uri_handler(g_server, &audio_uri);
-
     // GET /api/roku/* — forward to Roku ECP
     httpd_uri_t roku_get_uri = {
         .uri = "/api/roku/*",
@@ -493,10 +500,49 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
     httpd_register_uri_handler(g_server, &static_uri);
 
     ESP_LOGI(TAG, "HTTP server started on port %d", port);
+
+    // Start a dedicated HTTP server for audio streaming on port+1.
+    // The audio handler blocks its server thread for the entire stream duration,
+    // so it must run on a separate httpd instance to avoid starving the main server.
+    httpd_config_t audio_config = HTTPD_DEFAULT_CONFIG();
+    audio_config.server_port = port + 1;
+    audio_config.stack_size = 10240;
+    audio_config.max_uri_handlers = 2;
+    audio_config.ctrl_port += 1;  // Each httpd instance needs a unique control port
+    audio_config.lru_purge_enable = true;
+    audio_config.max_open_sockets = 2;
+
+    err = httpd_start(&g_audio_server, &audio_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start audio server: %s", esp_err_to_name(err));
+        return;
+    }
+
+    httpd_uri_t audio_options_uri = {
+        .uri = "/api/audio",
+        .method = HTTP_OPTIONS,
+        .handler = options_handler,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(g_audio_server, &audio_options_uri);
+
+    httpd_uri_t audio_uri = {
+        .uri = "/api/audio",
+        .method = HTTP_GET,
+        .handler = audio_handler,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(g_audio_server, &audio_uri);
+
+    ESP_LOGI(TAG, "Audio server started on port %d", port + 1);
 }
 
 void stop_http_server() {
     stop_session();
+    if (g_audio_server) {
+        httpd_stop(g_audio_server);
+        g_audio_server = nullptr;
+    }
     if (g_server) {
         httpd_stop(g_server);
         g_server = nullptr;

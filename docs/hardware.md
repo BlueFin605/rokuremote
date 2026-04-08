@@ -1,6 +1,6 @@
-# Hardware I have
+# Previous Hardware
 
-## ESP32 Board
+## ESP32 Board (replaced by XIAO ESP32-S3)
 
 **DOIT ESP32 DEVKIT V1** (ESP-WROOM-32 module)
 - **Source:** https://www.aliexpress.com/item/1005008503831020.html
@@ -41,14 +41,23 @@
 | Dimensions | 51.45mm x 23.37mm |
 | Form Factor | Breadboard-friendly, 2x15 pin rows |
 
+### Board-Specific Config
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Build target | `idf.py set-target esp32` | Base ESP32 chip |
+| Flash size | `CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y` (default) | 4MB flash |
+| Console | `CONFIG_ESP_CONSOLE_UART_DEFAULT=y` (default) | CP2102 USB-to-UART bridge |
+| Bootloader offset | `0x1000` | Base ESP32 standard |
+
 ## Roku
 - Roku Ultra (192.168.50.144)
 
-# Hardware I have on Order
+# Target Hardware
 
 ## Seeed Studio XIAO ESP32-S3
 
-**XIAO ESP32-S3** (non-Sense variant, no camera)
+**XIAO ESP32-S3** (non-Sense variant, no camera) — **primary target board**
 - **Source:** https://www.aliexpress.com/item/1005007341749305.html
 
 ### Processor & Memory
@@ -84,8 +93,15 @@
 | Dimensions | 21mm x 17.5mm |
 | Form Factor | XIAO ultra-compact, castellated pads |
 
-### Notes
-- Will need `idf.py set-target esp32s3` to retarget firmware build
+### Board-Specific Config
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Build target | `idf.py set-target esp32s3` | ESP32-S3 chip |
+| Flash size | `CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y` | 8MB flash |
+| Console | `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` | Native USB-C, no UART bridge |
+| Bootloader offset | `0x0` | S3 uses 0x0 (not 0x1000 like base ESP32) |
+| Main task stack | `CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192` | Wi-Fi scan arrays need headroom |
 
 # Boards Investigated but Not Suitable
 

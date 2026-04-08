@@ -92,26 +92,30 @@ export class AudioComponent implements OnInit, OnDestroy {
 
   private startPolling(): void {
     this.pollSub?.unsubscribe();
+    // Fetch status immediately on entry, then every 5 seconds
+    this.proxy.getStatus().subscribe(status => this.handleStatus(status));
     this.pollSub = interval(5000).pipe(
       switchMap(() => this.proxy.getStatus()),
     ).subscribe({
-      next: (status) => {
-        this.proxyStatus = status;
-
-        // Auto-start audio playback when proxy reaches streaming state
-        if (status.state === 'streaming' && !this.wasStreaming) {
-          this.wasStreaming = true;
-          this.audioPlayer.start(this.proxy.getAudioStreamUrl());
-        }
-
-        // Reset when streaming stops
-        if (status.state !== 'streaming') {
-          this.wasStreaming = false;
-        }
-      },
+      next: (status) => this.handleStatus(status),
       error: () => {
         this.proxyAvailable = false;
       },
     });
+  }
+
+  private handleStatus(status: ProxyStatus): void {
+    this.proxyStatus = status;
+
+    // Auto-start audio playback when proxy reaches streaming state
+    if (status.state === 'streaming' && !this.wasStreaming) {
+      this.wasStreaming = true;
+      this.audioPlayer.start(this.proxy.getAudioStreamUrl());
+    }
+
+    // Reset when streaming stops
+    if (status.state !== 'streaming') {
+      this.wasStreaming = false;
+    }
   }
 }

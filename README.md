@@ -82,8 +82,8 @@ Download the `roku-proxy-esp32` artifact from the latest [Actions build](https:/
 ```bash
 pip install esptool    # if not already installed
 
-esptool.py --chip esp32 -p /dev/tty.usbserial-0001 write_flash \
-  0x1000  bootloader.bin \
+esptool.py --chip esp32s3 -p /dev/tty.usbserial-0001 write_flash \
+  0x0     bootloader.bin \
   0x8000  partition-table.bin \
   0x10000 roku-proxy-esp32.bin
 ```
@@ -94,7 +94,7 @@ Requires [ESP-IDF v5.x](https://docs.espressif.com/projects/esp-idf/en/stable/es
 
 ```bash
 cd esp32
-idf.py set-target esp32
+idf.py set-target esp32s3
 idf.py build
 idf.py -p /dev/tty.usbserial-0001 flash
 ```
@@ -122,7 +122,7 @@ Type your SSID and password. They're saved to flash and persist across reboots â
 To re-enter credentials, erase the saved config and reboot:
 
 ```bash
-esptool.py --chip esp32 -p /dev/tty.usbserial-0001 erase_region 0x9000 0x6000
+esptool.py --chip esp32s3 -p /dev/tty.usbserial-0001 erase_region 0x9000 0x6000
 ```
 
 Then open the serial monitor again and the ESP32 will re-prompt.
@@ -144,8 +144,8 @@ Open `https://roku.bluefin605.com` on your phone â€” the app defaults to `http:/
 If you have a pre-built firmware (e.g., from GitHub Actions), you can flash it directly with `esptool` without needing ESP-IDF:
 
 ```bash
-esptool --chip esp32 --port COM3 --baud 460800 write_flash -z \
-  0x1000 bootloader/bootloader.bin \
+esptool --chip esp32s3 --port COM3 --baud 460800 write_flash -z \
+  0x0   bootloader/bootloader.bin \
   0x8000 partition_table/partition-table.bin \
   0x10000 roku-proxy-esp32.bin
 ```

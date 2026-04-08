@@ -91,6 +91,18 @@ export class ProxyService {
   }
 
   getAudioStreamUrl(): string {
+    // On ESP32, audio is served on a dedicated HTTP server (main port + 1)
+    // to avoid blocking the main server thread during long-lived streams.
+    // On the desktop proxy, audio is on the same port (cpp-httplib is multi-threaded).
+    if (this.isEsp32Origin()) {
+      return `${window.location.protocol}//${window.location.hostname}:81/api/audio`;
+    }
     return `${this.apiBase()}/audio`;
+  }
+
+  private isEsp32Origin(): boolean {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    return host === 'roku-proxy.local' || !!host.match(/^192\.168\./);
   }
 }
