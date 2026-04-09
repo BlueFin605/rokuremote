@@ -54,7 +54,8 @@ export class SetupComponent implements OnInit {
     const savedIp = this.roku.getSavedIp();
     if (savedIp) {
       this.ipAddress = savedIp;
-      this.tryConnect();
+      // Show cached connection state without re-verifying
+      this.deviceInfo = this.roku.getCachedDeviceInfo();
     }
 
     // Check if proxy is available for auto-discovery
@@ -63,7 +64,7 @@ export class SetupComponent implements OnInit {
     });
   }
 
-  tryConnect(): void {
+  saveRoku(): void {
     if (!this.ipAddress.trim()) return;
 
     this.loading = true;
@@ -101,7 +102,7 @@ export class SetupComponent implements OnInit {
 
   selectDevice(device: ProxyDevice): void {
     this.ipAddress = device.ip;
-    this.tryConnect();
+    this.saveRoku();
   }
 
   saveProxyUrl(): void {

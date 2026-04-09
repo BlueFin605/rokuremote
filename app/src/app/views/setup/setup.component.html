@@ -32,24 +32,18 @@
         type="text"
         [(ngModel)]="ipAddress"
         placeholder="192.168.1.100"
-        (keydown.enter)="tryConnect()"
+        (keydown.enter)="saveRoku()"
         [disabled]="loading"
       />
-      <button (click)="tryConnect()" [disabled]="loading || !ipAddress.trim()">
-        {{ loading ? 'Connecting...' : 'Connect' }}
+      <button (click)="saveRoku()" [disabled]="loading || !ipAddress.trim()">
+        {{ loading ? 'Saving...' : 'Save' }}
       </button>
     </div>
     <p class="hint">Find your Roku's IP at: Settings &gt; Network &gt; About</p>
   </div>
 
   @if (deviceInfo) {
-    <div class="success">
-      <p>Connected to <strong>{{ deviceInfo.name }}</strong> ({{ deviceInfo.model }})</p>
-      @if (deviceInfo.supportsPrivateListening) {
-        <p class="capability">Private listening supported</p>
-      }
-      <button class="close-btn" (click)="close()">Close</button>
-    </div>
+    <p class="roku-status success">Connected to {{ deviceInfo.name }} ({{ deviceInfo.model }})</p>
   }
 
   @if (error) {
@@ -70,7 +64,7 @@
       } @else {
         <p>{{ error.message }}</p>
       }
-      <button class="retry" (click)="tryConnect()">Try Again</button>
+      <button class="retry" (click)="saveRoku()">Try Again</button>
     </div>
   }
 
@@ -115,7 +109,7 @@
               (keydown.enter)="saveTvSettings()"
             />
             <button (click)="saveTvSettings()" [disabled]="tvTesting || !tvIpAddress.trim()">
-              {{ tvTesting ? 'Testing...' : 'Save' }}
+              {{ tvTesting ? 'Saving...' : 'Save' }}
             </button>
           </div>
 
@@ -167,4 +161,8 @@
       </div>
     }
   </div>
+
+  @if (deviceInfo) {
+    <button class="close-btn" (click)="close()">Close</button>
+  }
 </div>
