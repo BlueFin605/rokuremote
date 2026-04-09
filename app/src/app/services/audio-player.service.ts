@@ -7,19 +7,6 @@ export class AudioPlayerService {
   private static readonly STORAGE_KEY = 'audio-max-latency';
   private static readonly DEFAULT_MAX_LATENCY = 0.15;
 
-  // Minimal silent MP3 (< 200 bytes) — keeps the OS audio session alive through screen lock
-  private static readonly SILENT_MP3 = 'data:audio/mp3;base64,' +
-    'SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
-    'AAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-
   private audioCtx: AudioContext | null = null;
   private decoder: any = null;
   private abortController: AbortController | null = null;
@@ -27,8 +14,10 @@ export class AudioPlayerService {
   private _isPlaying = false;
   private _maxLatency: number;
 
-  // Background audio support
-  private silentAudio: HTMLAudioElement | null = null;
+  // Background audio support — routing through <audio> element keeps iOS/Android
+  // audio session alive through screen lock
+  private mediaDestination: MediaStreamAudioDestinationNode | null = null;
+  private audioElement: HTMLAudioElement | null = null;
   private wakeLock: any = null;
   private visibilityHandler: (() => void) | null = null;
 
@@ -137,7 +126,7 @@ export class AudioPlayerService {
   }
 
   private decodeAndPlay(opusFrame: Uint8Array): void {
-    if (!this.decoder || !this.audioCtx) return;
+    if (!this.decoder || !this.audioCtx || !this.mediaDestination) return;
 
     try {
       const result = this.decoder.decodeFrame(opusFrame);
@@ -156,7 +145,9 @@ export class AudioPlayerService {
 
       const source = this.audioCtx.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(this.audioCtx.destination);
+      // Route through MediaStreamDestination → <audio> element so the OS
+      // treats this as active media playback (survives screen lock)
+      source.connect(this.mediaDestination);
 
       // Schedule playback to maintain continuity
       const now = this.audioCtx.currentTime;
@@ -178,30 +169,32 @@ export class AudioPlayerService {
   }
 
   /**
-   * Keeps audio alive through screen lock on iOS/Android PWAs.
+   * Routes decoded audio through an <audio> element so iOS/Android treat it
+   * as media playback that survives screen lock.
    *
-   * - Silent <audio> loop: tells the OS an audio session is active,
-   *   preventing the browser from being suspended on lock.
-   * - MediaSession API: registers lock-screen metadata and controls.
-   * - Visibility handler: resumes AudioContext if the OS suspended it.
-   * - Wake Lock: prevents auto-lock on supported devices.
+   * Web Audio API alone (AudioContext.destination) gets suspended on lock.
+   * But an <audio> element playing a MediaStream keeps the audio session alive.
    */
   private startBackgroundAudioSupport(): void {
-    // 1. Silent <audio> element — keeps the OS audio session alive
-    this.silentAudio = document.createElement('audio');
-    this.silentAudio.src = AudioPlayerService.SILENT_MP3;
-    this.silentAudio.loop = true;
-    this.silentAudio.volume = 0.01; // near-silent but nonzero for iOS
-    this.silentAudio.play().catch(() => {});
+    if (!this.audioCtx) return;
 
-    // 2. MediaSession — lock-screen metadata and play/pause controls
+    // 1. Create a MediaStream destination — decoded audio goes here instead
+    //    of audioCtx.destination
+    this.mediaDestination = this.audioCtx.createMediaStreamDestination();
+
+    // 2. Play the MediaStream through an <audio> element — this is what
+    //    keeps the OS audio session alive through screen lock
+    this.audioElement = document.createElement('audio');
+    this.audioElement.srcObject = this.mediaDestination.stream;
+    this.audioElement.play().catch(() => {});
+
+    // 3. MediaSession — lock-screen metadata and pause control
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: 'Private Listening',
         artist: 'Roku Remote',
       });
       navigator.mediaSession.setActionHandler('pause', () => {
-        // User tapped pause on lock screen — stop streaming
         this.stop();
       });
       navigator.mediaSession.setActionHandler('play', () => {
@@ -209,28 +202,30 @@ export class AudioPlayerService {
       });
     }
 
-    // 3. Visibility change — resume AudioContext when returning from background
+    // 4. Resume AudioContext if the OS suspended it when returning from background
     this.visibilityHandler = () => {
-      if (document.visibilityState === 'visible' && this.audioCtx?.state === 'suspended') {
+      if (this.audioCtx?.state === 'suspended') {
         this.audioCtx.resume();
+      }
+      // Re-play audio element in case iOS paused it
+      if (this.audioElement?.paused && this._isPlaying) {
+        this.audioElement.play().catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', this.visibilityHandler);
 
-    // Also resume proactively on any user interaction after returning
-    // (iOS sometimes needs a user gesture to resume)
-    this.audioCtx?.resume();
-
-    // 4. Wake Lock — prevents auto screen-off on Android
+    // 5. Wake Lock — prevents auto screen-off on Android
     this.requestWakeLock();
   }
 
   private stopBackgroundAudioSupport(): void {
-    if (this.silentAudio) {
-      this.silentAudio.pause();
-      this.silentAudio.removeAttribute('src');
-      this.silentAudio = null;
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.srcObject = null;
+      this.audioElement = null;
     }
+
+    this.mediaDestination = null;
 
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = null;
@@ -250,7 +245,6 @@ export class AudioPlayerService {
     try {
       if ('wakeLock' in navigator) {
         this.wakeLock = await (navigator as any).wakeLock.request('screen');
-        // Re-acquire if released (e.g. tab switch on Android)
         this.wakeLock.addEventListener('release', () => {
           if (this._isPlaying) {
             this.requestWakeLock();
