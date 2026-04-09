@@ -22,7 +22,7 @@ How it could be built. Contracts, architecture, verification. No implementation.
 │  └────┬────┘ └────┬─────┘ └───┬───┘ └───┬───┘  │
 │       │           │           │          │      │
 │  ┌────┴───────────┴───────────┴──────────┴───┐  │
-│  │     Proxy Service    +    Roku Service    │  │
+│  │  Proxy Service + Roku Service + TvService │  │
 │  │  (routes all requests through proxy)      │  │
 │  └──────────────────────┬────────────────────┘  │
 └─────────────────────────┼────────────────────────┘
@@ -34,16 +34,19 @@ How it could be built. Contracts, architecture, verification. No implementation.
             │                          │
             │  • CORS headers          │
             │  • ECP forwarding        │
+            │  • TV protocol handler   │
             │  • SSDP discovery        │
             │  • WS auth + RTP recv    │
             │  • Audio serving         │
-            └─────────────┬────────────┘
-                          │ HTTP/WS/RTP (local network)
-                          ▼
-                 ┌─────────────────┐
-                 │   Roku Device   │
-                 │   port 8060     │
-                 └─────────────────┘
+            └──────────┬───┬───────────┘
+                       │   │
+          HTTP/WS/RTP  │   │  SOAP/HTTP
+          (local net)  │   │  (local net)
+                       ▼   ▼
+          ┌────────┐  ┌────────┐
+          │ Roku   │  │   TV   │
+          │ :8060  │  │ :55000 │
+          └────────┘  └────────┘
 ```
 
 ### Key Decision: All Requests Route Through a Local Proxy
@@ -288,6 +291,7 @@ API routes move under `/api/` to separate them from static file serving:
 |-------|---------|
 | `/api/discover`, `/api/start`, `/api/stop`, `/api/status`, `/api/audio` | Existing proxy API handlers |
 | `/api/roku/*` | ECP forwarding |
+| `/api/tv/*` | TV command handlers (Phase 6) |
 | `/*.js`, `/*.css`, `/icons/*` | Embedded static files |
 | `/` and `/*` fallback | `index.html` (SPA routing) |
 
@@ -317,6 +321,278 @@ The CloudFront deployment pipeline remains unchanged — the `esp32` build is an
 
 ---
 
+## Phase 6: TV Control
+
+**Supports:** Flow TV-Control (A, B, C), North Star #5-10, #23
+
+### Context
+
+The Roku handles streaming and navigation. The TV handles volume, mute, power, and input switching. Today, volume/mute/power buttons send Roku ECP keypresses, which only work if the Roku supports HDMI-CEC to relay them to the TV. This phase adds direct TV control — the proxy talks to the TV using its native protocol, and the app routes commands to the right device automatically.
+
+The first supported TV type is Panasonic Viera (SOAP over HTTP, port 55000). The architecture supports adding other TV brands without changing the app or the phone-to-proxy contract.
+
+### Inputs
+
+- **Findings**: `docs/findings-panasonic.md` — Viera SOAP API, NRC key codes, encryption protocol, CORS absent
+- **Flow**: `docs/flow-tv-control.md` — setup, routing, extensibility
+- **Constraint**: No CORS on the TV's SOAP API — all commands must route through the proxy, same as Roku
+
+### Architecture Change
+
+```mermaid
+flowchart TD
+    subgraph Phone["Phone (Browser)"]
+        RC["Remote Component"]
+        RC --> RokuSvc["RokuService<br/>nav, play, apps, text"]
+        RC --> TvSvc["TvService<br/>vol, mute, power, input"]
+    end
+
+    subgraph Proxy["Proxy (C++ / ESP32)"]
+        RokuH["/api/roku/*<br/>ECP Handler"]
+        TvH["/api/tv/*<br/>TV Protocol Handler"]
+        TvH --> Pana["Panasonic<br/>(SOAP :55000)"]
+        TvH --> Future["Future brand..."]
+    end
+
+    RokuSvc --> RokuH
+    TvSvc --> TvH
+    RokuH --> Roku["Roku :8060"]
+    Pana --> TV["TV :55000"]
+
+    classDef device fill:#90EE90,stroke:#2E7D32,color:#000
+    classDef service fill:#81D4FA,stroke:#0277BD,color:#000
+    classDef handler fill:#FFE082,stroke:#F57C00,color:#000
+    class Roku,TV device
+    class RokuSvc,TvSvc service
+    class RokuH,TvH,Pana,Future handler
+
+    %% MEANING: Two independent command paths — TV commands never touch the Roku
+    %% COLOR: Blue = app services, Yellow = proxy handlers, Green = physical devices
+```
+
+*Blue = app services, Yellow = proxy handlers, Green = physical devices. Two independent command paths — a TV command never touches the Roku, a Roku command never touches the TV.*
+
+### Phone-to-Proxy TV Contract
+
+The phone sends generic TV actions. The proxy translates. This contract is stable across all TV types — adding a new brand changes the proxy internals, not the API.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/tv/keypress/<action>?ip=<ip>&type=<type>` | POST | Send a TV command |
+| `/api/tv/volume?ip=<ip>&type=<type>` | GET | Get current volume level (0-100) |
+| `/api/tv/discover?type=<type>` | GET | SSDP discovery for TVs of this type |
+| `/api/tv/pair/start?ip=<ip>&type=<type>` | POST | Begin pairing — TV shows PIN |
+| `/api/tv/pair/finish?ip=<ip>&type=<type>` | POST | Complete pairing — body: `{"pin":"1234"}` |
+| `/api/tv/pair/status?ip=<ip>&type=<type>` | GET | Check if paired (returns `{"paired":true/false,"required":true/false}`) |
+
+**Generic TV actions** (the `<action>` in `/api/tv/keypress/<action>`):
+
+| Action | What it does |
+|---|---|
+| `volume_up` | Increment volume |
+| `volume_down` | Decrement volume |
+| `mute` | Toggle mute |
+| `power` | Toggle power on/off |
+| `hdmi1` ... `hdmi4` | Switch to HDMI input |
+
+All responses include CORS headers (same as Roku endpoints).
+
+### Panasonic Protocol Translation
+
+The proxy maps generic actions to Panasonic Viera SOAP calls:
+
+| Generic Action | Panasonic Translation | Endpoint | SOAP Action |
+|---|---|---|---|
+| `volume_up` | `NRC_VOLUP-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `volume_down` | `NRC_VOLDOWN-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `mute` | `NRC_MUTE-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `power` | `NRC_POWER-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `hdmi1` | `NRC_HDMI1-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `hdmi2` | `NRC_HDMI2-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `hdmi3` | `NRC_HDMI3-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `hdmi4` | `NRC_HDMI4-ONOFF` | `/nrc/control_0` | `X_SendKey` |
+| `GET volume` | `GetVolume` | `/dmr/control_0` | `GetVolume` (UPnP RenderingControl) |
+
+Using `X_SendKey` for volume (keypress approach) rather than `SetVolume` (direct set). Simpler, works on all models, matches how the Roku volume already works (discrete presses). The `GET /volume` endpoint uses the DMR `GetVolume` for reading the current level — useful for a future volume indicator but not required for the core press-and-hold pattern.
+
+### Proxy Protocol Abstraction
+
+The complexity of different TV protocols is contained in the proxy behind a clean interface. The HTTP route handler delegates to a protocol-specific handler based on the `type` parameter.
+
+```mermaid
+classDiagram
+    class TvHandler {
+        <<abstract>>
+        +sendKey(action) bool
+        +getVolume() int
+        +startPairing() bool
+        +finishPairing(pin) bool
+        +isPaired() bool
+        +needsPairing() bool
+        +discover() Device[]
+        +create(type)$ TvHandler
+    }
+
+    class PanasonicHandler {
+        -soapClient
+        -sessionCredentials
+        +sendKey(action) bool
+        +getVolume() int
+        +startPairing() bool
+        +finishPairing(pin) bool
+    }
+
+    class FutureHandler {
+        +sendKey(action) bool
+        ...
+    }
+
+    TvHandler <|-- PanasonicHandler : SOAP + AES-128-CBC
+    TvHandler <|-- FutureHandler : brand protocol
+
+    class HttpRouteHandler {
+        -handler: TvHandler
+        +handleTvRequest(req, res)
+    }
+
+    HttpRouteHandler --> TvHandler : delegates to
+
+    %% MEANING: Protocol complexity contained behind TvHandler interface
+    %% Route handler never sees SOAP, NRC codes, or encryption
+```
+
+`TvHandler::create(type)` factory returns the right handler. The HTTP route handler calls `TvHandler` methods — it never knows about SOAP, NRC codes, or encryption.
+
+**ESP32:** Same abstraction, same handler interface. The Panasonic handler uses `esp_http_client` instead of `httplib` for SOAP requests, but the interface is identical.
+
+### Encryption & Pairing (2018+ Panasonic)
+
+The `PanasonicHandler` probes the TV on first contact (a `GetVolume` request). If the TV rejects unauthenticated requests, the handler flags `needsPairing() = true`.
+
+```mermaid
+sequenceDiagram
+    participant App as Phone
+    participant Proxy
+    participant TV as Panasonic TV
+
+    App->>Proxy: POST /api/tv/pair/status
+    Proxy->>TV: GetVolume (SOAP, unencrypted)
+    TV-->>Proxy: Auth error
+    Proxy-->>App: {"paired":false, "required":true}
+
+    App->>Proxy: POST /api/tv/pair/start
+    Proxy->>TV: X_DisplayPinCode (SOAP)
+    TV-->>Proxy: Challenge IV (base64)
+    Note over TV: PIN displayed on screen
+    Proxy-->>App: {"status":"waiting_for_pin"}
+
+    Note over App: User reads PIN from TV screen
+
+    App->>Proxy: POST /api/tv/pair/finish {"pin":"1234"}
+    Note over Proxy: Derive AES keys from IV<br/>Encrypt PIN
+    Proxy->>TV: X_RequestAuth (encrypted PIN)
+    TV-->>Proxy: Session credentials
+    Note over Proxy: Store credentials<br/>(file or NVS flash)
+    Proxy-->>App: {"paired":true}
+
+    Note over App,TV: All subsequent commands encrypted
+
+    %% MEANING: One-time pairing handshake for 2018+ Panasonic TVs
+    %% GOTCHA: Pre-2018 TVs skip this entirely — GetVolume succeeds without auth
+```
+
+**Credential storage:**
+- **Desktop proxy**: JSON file (`~/.roku-proxy/tv_config.json`)
+- **ESP32**: NVS (Non-Volatile Storage) — same mechanism as Wi-Fi credentials
+
+Once paired, the handler encrypts all subsequent SOAP requests using the stored session credentials. Re-pairing is only needed if credentials are lost (NVS erased, config file deleted). Pre-2018 TVs skip this entirely — the initial `GetVolume` probe succeeds without auth.
+
+### Angular App Changes
+
+**New `TvService`** (alongside `RokuService`):
+
+- Stores TV type and IP in localStorage (same pattern as Roku IP)
+- Has its own independent command queue with throttling (TV commands don't block Roku commands)
+- Methods: `command(action)`, `getVolume()`, pairing methods
+- Constructs URLs: `${base}/tv/keypress/${action}?ip=${tvIp}&type=${tvType}`
+- Exposes `configured$` observable so the UI reacts to TV configuration changes
+
+**`RemoteComponent` routing changes:**
+
+```mermaid
+flowchart TD
+    Press["Button pressed"] --> Type{Which button?}
+
+    Type -->|"Vol, Mute,<br/>Power, HDMI"| TVCfg{TV configured?}
+    Type -->|"D-pad, Play,<br/>Apps, Text"| RokuSvc["RokuService<br/>keypress(key)"]
+
+    TVCfg -->|Yes| TvSvc["TvService<br/>command(action)"]
+    TVCfg -->|"No (Vol/Mute/Power)"| Fallback["RokuService<br/>keypress(key)"]
+    TVCfg -->|"No (HDMI)"| Hidden["Button hidden"]
+
+    TvSvc --> TvProxy["POST /api/tv/keypress/..."]
+    RokuSvc --> RokuProxy["POST /api/roku/keypress/..."]
+    Fallback --> RokuProxy
+
+    classDef tv fill:#90EE90,stroke:#2E7D32,color:#000
+    classDef roku fill:#81D4FA,stroke:#0277BD,color:#000
+    classDef decision fill:#FFE082,stroke:#F57C00,color:#000
+    class TvSvc,TvProxy tv
+    class RokuSvc,Fallback,RokuProxy roku
+    class Type,TVCfg decision
+
+    %% MEANING: App-side routing — TV commands branch based on whether a TV is configured
+    %% COLOR: Blue = Roku path, Green = TV path, Yellow = decision points
+```
+
+*Blue = Roku path, Green = TV path, Yellow = decision points*
+
+The volume press-and-hold pattern stays the same — `startVolumeRepeat` / `stopVolumeRepeat` — but dispatches to `TvService` instead of `RokuService` when a TV is configured.
+
+**Setup page changes:**
+
+- New collapsible "TV Settings" section (same pattern as "Proxy Settings")
+- TV type dropdown: "None", "Panasonic Viera" (extensible)
+- TV IP text field + "Discover" button (SSDP via proxy)
+- Connection test on save (attempt `GetVolume`)
+- If pairing required: PIN entry field appears, walks user through the one-time flow
+- Pairing status indicator ("Paired" / "Not paired" / "Not required")
+
+**HDMI input buttons:**
+
+When a TV is configured, show an input row below the volume row:
+
+```
+[HDMI 1] [HDMI 2] [HDMI 3] [HDMI 4]
+```
+
+Hidden when no TV is configured (these have no Roku equivalent).
+
+### SSDP Discovery Extension
+
+The existing `/api/discover` endpoint searches for `roku:ecp`. The new `/api/tv/discover?type=panasonic` searches for `urn:panasonic-com:service:p00NetworkControl:1`. Same SSDP mechanism, different search target. The two endpoints are independent — they don't share a search.
+
+The SSDP implementation in the proxy already handles multicast and response parsing. The Panasonic discovery reuses the same socket/multicast code with a different `ST` (search target) header and response parser.
+
+### Failure Handling
+
+| Failure | Behaviour |
+|---|---|
+| TV unreachable | Brief error indicator on the button. Roku control continues. No modal, no navigation. |
+| TV command timeout | 3-second timeout (same as Roku). Transient error, don't block UI. |
+| No TV configured | Volume/mute/power go to Roku. HDMI buttons hidden. No error. |
+| Pairing session expired | Proxy re-authenticates transparently using stored credentials. If that fails, `pair/status` returns `paired: false` and the app prompts to re-pair. |
+| Wrong TV type selected | Commands fail (wrong protocol). User changes type in settings. |
+
+### Extension Points
+
+Adding a new TV brand requires:
+1. **Proxy**: A new `TvHandler` subclass implementing the brand's protocol
+2. **App**: A new entry in the TV type dropdown (one string)
+3. **No changes** to: the phone-to-proxy API contract, the `TvService`, the `RemoteComponent`, or the command routing logic
+
+---
+
 ## Verification
 
 ### How do I know it works on my machine?
@@ -327,6 +603,12 @@ The CloudFront deployment pipeline remains unchanged — the `esp32` build is an
 - Open on phone browser (same Wi-Fi) via laptop's local IP.
 - The proxy handles CORS and ECP forwarding — no `proxy.conf.js` needed.
 - Real Roku on the same network — press buttons, see TV respond. Or use mock: `cd mock && node roku-mock.mjs`.
+
+**Phase 6 (TV control):**
+- Same desktop-first development as Phase 3. SOAP requests are standard HTTP — develop and test in the desktop proxy against a real Panasonic TV on the same network.
+- For testing without a TV: extend the mock server to respond to Panasonic SOAP requests (same pattern as the Roku mock). Return canned SOAP responses for `X_SendKey`, `GetVolume`, etc.
+- Pairing (2018+ models): test against the real TV — the PIN flow requires the TV to display a PIN. Mock the pairing flow in unit tests using known challenge/response pairs.
+- Angular app: verify routing logic — volume/mute/power goes to `/api/tv/...` when TV is configured, to `/api/roku/...` when not.
 
 **Phase 3 (Audio proxy) — Desktop-first development:**
 
@@ -352,7 +634,9 @@ This means Phase 3 development doesn't require an ESP32 until the final stage. T
 - **Unit tests**: Roku service layer — mock HTTP responses, verify correct ECP URLs and payloads are constructed.
 - **Unit tests**: App list parsing — given known XML, verify correct model output.
 - **Unit tests**: Auth protocol — given a known challenge, verify correct SHA-1 response.
-- **E2E tests**: Not practical against a real Roku in CI. Use a mock ECP server (simple HTTP server returning canned XML responses) to verify the UI flow: discover → connect → show remote → press button → verify HTTP call.
+- **Unit tests**: TvService — verify correct URLs and actions are constructed, verify routing logic (TV configured vs. not), verify fallback to Roku.
+- **Unit tests**: Panasonic SOAP — given a generic action, verify correct SOAP envelope and NRC code are produced.
+- **E2E tests**: Not practical against a real Roku or TV in CI. Use a mock ECP/SOAP server (simple HTTP server returning canned responses) to verify the UI flow: discover → connect → show remote → press button → verify HTTP call.
 - **Lint + build**: Angular build must succeed, no TypeScript errors.
 
 ### How do I know it works in production?
@@ -391,3 +675,7 @@ This means Phase 3 development doesn't require an ESP32 until the final stage. T
 | Audio proxy | ESP32 | Phone-native via Capacitor | Keeps all phases browser-only. User has ESP32. Avoids mobile build toolchain for Phase 1 & 2. |
 | Audio decode location | Browser (`opus-decoder` Wasm package) | Proxy decodes to PCM | Offloads CPU from proxy/ESP32, well-supported Wasm approach. |
 | App grid order | Alphabetical + user favourites | Mimic Roku home screen order | ECP doesn't expose home screen order. |
+| TV volume approach | Keypress (`X_SendKey` NRC codes) | Direct set (`SetVolume` 0-100) | Simpler, works on all Panasonic models, matches existing Roku press-and-hold pattern. `GetVolume` available for a future volume indicator. |
+| TV protocol abstraction | `TvHandler` base class in proxy | Protocol logic in Angular app | Keeps the browser app thin and protocol-agnostic. Adding a TV type means proxy changes only, not app changes. Same pattern as Roku (app doesn't know about ECP details). |
+| TV command queue | Separate queue from Roku | Shared queue | Volume going to the TV shouldn't block a d-pad press going to the Roku. Independent devices, independent queues. |
+| Pairing credential storage | Proxy-side (file / NVS flash) | Phone-side (localStorage) | Pairing involves crypto keys that the proxy uses to encrypt SOAP requests. Storing them where they're used avoids sending secrets over the network. |

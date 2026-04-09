@@ -157,7 +157,7 @@ Same mechanism as Roku: **SSDP** multicast on `239.255.255.250:1900`.
 | App listing | `GET /query/apps` | `X_GetAppList` SOAP action |
 | App launch | `POST /launch/<appId>` | `X_LaunchApp` with product ID |
 | Text input | `POST /keypress/Lit_<char>` | `X_SendString` (full string at once) |
-| CORS | No | **Unknown — not documented** |
+| CORS | No | No (assumed — same era, same problem, same proxy solution) |
 | Access control | Roku OS 14.1+ limited mode | TV setting: "TV Remote App Settings > Powered On By Apps" |
 
 The SSDP discovery target differs but the proxy already implements SSDP for Roku. Adding a second search target is straightforward.
@@ -191,7 +191,7 @@ The Viera SOAP API is tied to MyHomeScreen. Fire TV and Google TV models expose 
 
 ## Gaps and Uncertainties
 
-- **CORS behavior unknown** — No source confirms whether the Viera SOAP API includes CORS headers. If it doesn't (likely, given the era), the same proxy approach used for Roku applies.
+- **CORS headers almost certainly absent** — No source confirms the Viera SOAP API includes CORS headers, and given the era of the protocol (pre-browser-control), it almost certainly doesn't. The same proxy approach used for Roku applies — all TV commands must route through the proxy.
 - **Power-on varies by model** — Some models cannot be powered on remotely. Wake-on-LAN works for some but not all. Home Assistant documents this as a known limitation.
 - **No push events** — Like Roku, there's no event subscription. State must be polled.
 - **Key derivation algorithm** — The AES key derivation from the challenge IV is implemented in code but not formally documented. Would need to be ported from Python/Node.js to C++ for the proxy.
