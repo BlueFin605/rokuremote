@@ -54,7 +54,8 @@ export class SetupComponent implements OnInit {
     const savedIp = this.roku.getSavedIp();
     if (savedIp) {
       this.ipAddress = savedIp;
-      this.tryConnect();
+      // Show cached connection state without re-verifying
+      this.deviceInfo = this.roku.getCachedDeviceInfo();
     }
 
     // Check if proxy is available for auto-discovery
@@ -63,7 +64,7 @@ export class SetupComponent implements OnInit {
     });
   }
 
-  tryConnect(): void {
+  saveRoku(): void {
     if (!this.ipAddress.trim()) return;
 
     this.loading = true;
@@ -74,8 +75,6 @@ export class SetupComponent implements OnInit {
       next: (info) => {
         this.deviceInfo = info;
         this.loading = false;
-        const dest = info.ecpEnabled ? '/apps' : '/remote';
-        setTimeout(() => this.router.navigate([dest]), 1000);
       },
       error: (err) => {
         this.loading = false;
@@ -103,7 +102,7 @@ export class SetupComponent implements OnInit {
 
   selectDevice(device: ProxyDevice): void {
     this.ipAddress = device.ip;
-    this.tryConnect();
+    this.saveRoku();
   }
 
   saveProxyUrl(): void {
@@ -203,6 +202,11 @@ export class SetupComponent implements OnInit {
     if (this.tvType === 'none') {
       this.clearTvSettings();
     }
+  }
+
+  close(): void {
+    const dest = this.roku.ecpEnabled ? '/apps' : '/remote';
+    this.router.navigate([dest]);
   }
 
   clearTvSettings(): void {

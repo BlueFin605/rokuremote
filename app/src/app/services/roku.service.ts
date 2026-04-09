@@ -33,6 +33,7 @@ export class RokuService {
   private static readonly THROTTLE_MS = 60;
 
   private static readonly ECP_KEY = 'roku-ecp-enabled';
+  private static readonly DEVICE_INFO_KEY = 'roku-device-info';
 
   private rokuIp: string | null = null;
   private commandQueue = new Subject<{ key: string; action: 'keypress' | 'keydown' | 'keyup' }>();
@@ -72,15 +73,27 @@ export class RokuService {
         this._ecpEnabled = info.ecpEnabled;
         localStorage.setItem(RokuService.STORAGE_KEY, ip);
         localStorage.setItem(RokuService.ECP_KEY, String(info.ecpEnabled));
+        localStorage.setItem(RokuService.DEVICE_INFO_KEY, JSON.stringify(info));
         return info;
       }),
       catchError(err => this.handleError(err))
     );
   }
 
+  getCachedDeviceInfo(): RokuDeviceInfo | null {
+    const stored = localStorage.getItem(RokuService.DEVICE_INFO_KEY);
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored) as RokuDeviceInfo;
+    } catch {
+      return null;
+    }
+  }
+
   disconnect(): void {
     this.rokuIp = null;
     localStorage.removeItem(RokuService.STORAGE_KEY);
+    localStorage.removeItem(RokuService.DEVICE_INFO_KEY);
   }
 
   isConnected(): boolean {

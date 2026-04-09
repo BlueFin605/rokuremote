@@ -107,6 +107,10 @@ export class RemoteComponent implements OnInit, OnDestroy {
     this.router.navigate(['/audio']);
   }
 
+  openSetup(): void {
+    this.router.navigate(['/setup']);
+  }
+
   reconnect(): void {
     this.disconnected = false;
     this.router.navigate(['/setup']);

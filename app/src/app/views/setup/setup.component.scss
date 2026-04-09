@@ -115,17 +115,30 @@
   }
 }
 
-.success {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: #e8f5e9;
-  border-radius: 8px;
-  text-align: center;
+.roku-status {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
 
-  .capability {
-    font-size: 0.85rem;
+  &.success {
+    background: #e8f5e9;
     color: #2e7d32;
   }
+}
+
+.close-btn {
+  display: block;
+  width: 100%;
+  margin-top: 2rem;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: #6c2dc7;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .error {

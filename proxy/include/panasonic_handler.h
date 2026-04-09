@@ -15,6 +15,11 @@ public:
     int getVolume(const std::string& ip) override;
     std::vector<DiscoveredTv> discover(int timeout_ms = 3000) override;
 
+private:
+    bool getMute(const std::string& ip);
+    bool setMute(const std::string& ip, bool mute);
+    bool toggleMute(const std::string& ip);
+
     // Public for use by discovery helper
     static constexpr int TV_PORT = 55000;
 
