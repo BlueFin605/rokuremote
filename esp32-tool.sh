@@ -99,11 +99,12 @@ flash() {
 }
 
 monitor() {
-    echo "Opening serial monitor on $PORT at 115200 baud. Press Ctrl+C to exit."
     # Use screen if available, otherwise python serial monitor
     if command -v screen &>/dev/null; then
+        echo "Opening serial monitor on $PORT at 115200 baud. To exit: Ctrl+A, K, then Y."
         screen "$PORT" 115200
     elif command -v python3 &>/dev/null; then
+        echo "Opening serial monitor on $PORT at 115200 baud. Press Ctrl+C to exit."
         python3 -c "
 import serial, sys
 try:
