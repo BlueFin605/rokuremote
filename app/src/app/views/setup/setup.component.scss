@@ -163,6 +163,95 @@
   }
 }
 
+.tv-section {
+  margin-top: 2rem;
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+
+  select {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    background: #fff;
+    margin-bottom: 0.75rem;
+
+    &:focus {
+      border-color: #6c2dc7;
+    }
+  }
+
+  .tv-status {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+
+    &.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    &.warning {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    &.error {
+      background: #fce4ec;
+      color: #c62828;
+    }
+  }
+
+  // Reuse discover-section styles
+  .discover-btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: #6c2dc7;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .device-list {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .device-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    background: #2d2d44;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    color: #fff;
+
+    &:hover {
+      border-color: #6c2dc7;
+    }
+
+    span {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  }
+}
+
 .proxy-section {
   margin-top: 2rem;
   border-top: 1px solid #ddd;

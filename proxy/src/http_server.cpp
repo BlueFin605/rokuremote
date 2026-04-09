@@ -2,6 +2,7 @@
 #include "roku_session.h"
 #include "rtp_receiver.h"
 #include "ssdp_discovery.h"
+#include "tv_handler.h"
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 #include <mutex>
@@ -209,6 +210,86 @@ void HttpServer::setup_routes() {
 
         res.status = result->status;
         res.set_content(result->body, result->get_header_value("Content-Type"));
+    });
+
+    // POST /tv/keypress/<action>?ip=<tv-ip>&type=<type> — Send TV command
+    srv.Post(R"(/tv/keypress/(.*))", [](const httplib::Request& req, httplib::Response& res) {
+        std::string ip = req.get_param_value("ip");
+        std::string type = req.get_param_value("type");
+        if (ip.empty() || type.empty()) {
+            res.status = 400;
+            res.set_content(R"({"error":"Missing ip or type parameter"})", "application/json");
+            return;
+        }
+
+        auto handler = tv::TvHandler::create(type);
+        if (!handler) {
+            res.status = 400;
+            json j = {{"error", "Unsupported TV type: " + type}};
+            res.set_content(j.dump(), "application/json");
+            return;
+        }
+
+        std::string action = req.matches[1].str();
+        if (handler->sendKey(ip, action)) {
+            res.set_content(R"({"status":"ok"})", "application/json");
+        } else {
+            res.status = 502;
+            res.set_content(R"({"error":"TV command failed"})", "application/json");
+        }
+    });
+
+    // GET /tv/volume?ip=<tv-ip>&type=<type> — Get current volume level
+    srv.Get("/tv/volume", [](const httplib::Request& req, httplib::Response& res) {
+        std::string ip = req.get_param_value("ip");
+        std::string type = req.get_param_value("type");
+        if (ip.empty() || type.empty()) {
+            res.status = 400;
+            res.set_content(R"({"error":"Missing ip or type parameter"})", "application/json");
+            return;
+        }
+
+        auto handler = tv::TvHandler::create(type);
+        if (!handler) {
+            res.status = 400;
+            json j = {{"error", "Unsupported TV type: " + type}};
+            res.set_content(j.dump(), "application/json");
+            return;
+        }
+
+        int volume = handler->getVolume(ip);
+        if (volume >= 0) {
+            json j = {{"volume", volume}};
+            res.set_content(j.dump(), "application/json");
+        } else {
+            res.status = 502;
+            res.set_content(R"({"error":"Could not get TV volume"})", "application/json");
+        }
+    });
+
+    // GET /tv/discover?type=<type> — SSDP discovery for TVs
+    srv.Get("/tv/discover", [](const httplib::Request& req, httplib::Response& res) {
+        std::string type = req.get_param_value("type");
+        if (type.empty()) {
+            res.status = 400;
+            res.set_content(R"({"error":"Missing type parameter"})", "application/json");
+            return;
+        }
+
+        auto handler = tv::TvHandler::create(type);
+        if (!handler) {
+            res.status = 400;
+            json j = {{"error", "Unsupported TV type: " + type}};
+            res.set_content(j.dump(), "application/json");
+            return;
+        }
+
+        auto devices = handler->discover(3000);
+        json arr = json::array();
+        for (const auto& d : devices) {
+            arr.push_back({{"ip", d.ip}, {"name", d.name}});
+        }
+        res.set_content(arr.dump(), "application/json");
     });
 
     // GET /audio — Streaming Opus frames as binary.

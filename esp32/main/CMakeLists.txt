@@ -14,6 +14,7 @@ idf_component_register(
         "roku_auth.cpp"
         "rtp_receiver.cpp"
         "ssdp_discovery.cpp"
+        "panasonic_handler.cpp"
     INCLUDE_DIRS "."
     REQUIRES
         esp_http_server

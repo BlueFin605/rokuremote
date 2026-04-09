@@ -175,6 +175,38 @@ button {
   }
 }
 
+.banner.tv-error {
+  background: #e65100;
+  animation: fade-out 2s forwards;
+}
+
+@keyframes fade-out {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+.hdmi-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: center;
+
+  .hdmi-btn {
+    flex: 1;
+    max-width: 80px;
+    padding: 0.6rem 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    background: $btn-bg;
+    border-radius: 8px;
+
+    &:active {
+      background: $btn-active;
+    }
+  }
+}
+
 .text-row {
   display: flex;
   gap: 0.5rem;

@@ -38,6 +38,7 @@ add_executable(roku-proxy
   src/rtp_receiver.cpp
   src/ssdp_discovery.cpp
   src/http_server.cpp
+  src/panasonic_handler.cpp
 )
 
 target_include_directories(roku-proxy PRIVATE include)

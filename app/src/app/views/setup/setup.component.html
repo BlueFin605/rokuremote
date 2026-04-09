@@ -73,6 +73,69 @@
     </div>
   }
 
+  <div class="tv-section">
+    <button class="proxy-toggle" (click)="showTvConfig = !showTvConfig">
+      TV Settings {{ showTvConfig ? '&#9650;' : '&#9660;' }}
+    </button>
+
+    @if (showTvConfig) {
+      <div class="proxy-config">
+        <label for="tv-type">TV Type</label>
+        <select id="tv-type" [(ngModel)]="tvType" (ngModelChange)="onTvTypeChange()">
+          <option value="none">None</option>
+          <option value="panasonic">Panasonic Viera</option>
+        </select>
+
+        @if (tvType !== 'none') {
+          @if (proxyAvailable) {
+            <button class="discover-btn" (click)="discoverTvs()" [disabled]="tvDiscovering" style="margin-top: 0.75rem">
+              {{ tvDiscovering ? 'Searching...' : 'Discover TVs' }}
+            </button>
+
+            @if (discoveredTvs.length > 0) {
+              <div class="device-list">
+                @for (device of discoveredTvs; track device.ip) {
+                  <button class="device-item" (click)="selectTv(device)">
+                    <strong>{{ device.name }}</strong>
+                    <span>{{ device.ip }}</span>
+                  </button>
+                }
+              </div>
+            }
+          }
+
+          <label for="tv-ip">TV IP Address</label>
+          <div class="input-row">
+            <input
+              id="tv-ip"
+              type="text"
+              [(ngModel)]="tvIpAddress"
+              placeholder="192.168.1.50"
+              (keydown.enter)="saveTvSettings()"
+            />
+            <button (click)="saveTvSettings()" [disabled]="tvTesting || !tvIpAddress.trim()">
+              {{ tvTesting ? 'Testing...' : 'Save' }}
+            </button>
+          </div>
+
+          @if (tvSuccess) {
+            <p class="tv-status success">Connected to TV</p>
+          }
+          @if (tvPairingRequired) {
+            <p class="tv-status warning">Pairing required (support coming in a future update)</p>
+          }
+          @if (tvError && !tvPairingRequired) {
+            <p class="tv-status error">{{ tvError }}</p>
+          }
+
+          <div class="proxy-actions">
+            <button class="reset-btn" (click)="clearTvSettings()">Remove TV</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
   <div class="proxy-section">
     <button class="proxy-toggle" (click)="showProxyConfig = !showProxyConfig">
       Proxy Settings {{ showProxyConfig ? '&#9650;' : '&#9660;' }}

@@ -3,6 +3,7 @@
 #include "rtp_receiver.h"
 #include "ssdp_discovery.h"
 #include "audio_buffer.h"
+#include "tv_handler.h"
 
 #include "esp_http_server.h"
 #include "esp_http_client.h"
@@ -404,6 +405,96 @@ static esp_err_t roku_post_handler(httpd_req_t* req) {
     return httpd_resp_send(req, body, read_len > 0 ? read_len : 0);
 }
 
+// ---- TV Route Handlers ----
+
+// Extract path segment after /api/tv/keypress/
+static const char* TV_KEYPRESS_PREFIX = "/api/tv/keypress/";  // 17 chars
+static std::string get_tv_action(httpd_req_t* req) {
+    const char* uri = req->uri;
+    const char* action_start = uri + strlen(TV_KEYPRESS_PREFIX);
+    const char* query = strchr(action_start, '?');
+    if (query) {
+        return std::string(action_start, query - action_start);
+    }
+    return std::string(action_start);
+}
+
+static esp_err_t tv_keypress_handler(httpd_req_t* req) {
+    std::string ip = get_query_param(req, "ip");
+    std::string type = get_query_param(req, "type");
+    if (ip.empty() || type.empty()) {
+        return send_json(req, 400, "{\"error\":\"Missing ip or type parameter\"}");
+    }
+
+    auto handler = tv::TvHandler::create(type);
+    if (!handler) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"error\":\"Unsupported TV type: %s\"}", type.c_str());
+        return send_json(req, 400, err);
+    }
+
+    std::string action = get_tv_action(req);
+    if (handler->sendKey(ip, action)) {
+        return send_json(req, 200, "{\"status\":\"ok\"}");
+    } else {
+        return send_json(req, 502, "{\"error\":\"TV command failed\"}");
+    }
+}
+
+static esp_err_t tv_volume_handler(httpd_req_t* req) {
+    std::string ip = get_query_param(req, "ip");
+    std::string type = get_query_param(req, "type");
+    if (ip.empty() || type.empty()) {
+        return send_json(req, 400, "{\"error\":\"Missing ip or type parameter\"}");
+    }
+
+    auto handler = tv::TvHandler::create(type);
+    if (!handler) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"error\":\"Unsupported TV type: %s\"}", type.c_str());
+        return send_json(req, 400, err);
+    }
+
+    int volume = handler->getVolume(ip);
+    if (volume >= 0) {
+        char json[32];
+        snprintf(json, sizeof(json), "{\"volume\":%d}", volume);
+        return send_json(req, 200, json);
+    } else {
+        return send_json(req, 502, "{\"error\":\"Could not get TV volume\"}");
+    }
+}
+
+static esp_err_t tv_discover_handler(httpd_req_t* req) {
+    std::string type = get_query_param(req, "type");
+    if (type.empty()) {
+        return send_json(req, 400, "{\"error\":\"Missing type parameter\"}");
+    }
+
+    auto handler = tv::TvHandler::create(type);
+    if (!handler) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"error\":\"Unsupported TV type: %s\"}", type.c_str());
+        return send_json(req, 400, err);
+    }
+
+    auto devices = handler->discover(3000);
+
+    cJSON* arr = cJSON_CreateArray();
+    for (const auto& d : devices) {
+        cJSON* obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(obj, "ip", d.ip.c_str());
+        cJSON_AddStringToObject(obj, "name", d.name.c_str());
+        cJSON_AddItemToArray(arr, obj);
+    }
+
+    char* json = cJSON_PrintUnformatted(arr);
+    esp_err_t ret = send_json(req, 200, json);
+    free(json);
+    cJSON_Delete(arr);
+    return ret;
+}
+
 // ---- Server Setup ----
 
 void start_http_server(int port, const std::string& local_ip, int rtp_port) {
@@ -489,6 +580,33 @@ void start_http_server(int port, const std::string& local_ip, int rtp_port) {
         .user_ctx = nullptr
     };
     httpd_register_uri_handler(g_server, &roku_post_uri);
+
+    // POST /api/tv/keypress/* — send TV command
+    httpd_uri_t tv_keypress_uri = {
+        .uri = "/api/tv/keypress/*",
+        .method = HTTP_POST,
+        .handler = tv_keypress_handler,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(g_server, &tv_keypress_uri);
+
+    // GET /api/tv/volume — get TV volume level
+    httpd_uri_t tv_volume_uri = {
+        .uri = "/api/tv/volume",
+        .method = HTTP_GET,
+        .handler = tv_volume_handler,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(g_server, &tv_volume_uri);
+
+    // GET /api/tv/discover — SSDP discovery for TVs
+    httpd_uri_t tv_discover_uri = {
+        .uri = "/api/tv/discover",
+        .method = HTTP_GET,
+        .handler = tv_discover_handler,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(g_server, &tv_discover_uri);
 
     // GET /* — static file serving (SPA fallback)
     httpd_uri_t static_uri = {
