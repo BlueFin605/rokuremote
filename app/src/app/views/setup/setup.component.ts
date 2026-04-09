@@ -193,6 +193,18 @@ export class SetupComponent implements OnInit {
     this.saveTvSettings();
   }
 
+  onTvTypeChange(): void {
+    // Reset status indicators when type changes, but keep the IP if one was entered
+    this.tvSuccess = false;
+    this.tvError = null;
+    this.tvPairingRequired = false;
+    this.discoveredTvs = [];
+
+    if (this.tvType === 'none') {
+      this.clearTvSettings();
+    }
+  }
+
   clearTvSettings(): void {
     this.tvType = 'none';
     this.tvIpAddress = '';

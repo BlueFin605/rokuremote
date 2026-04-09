@@ -81,7 +81,7 @@
     @if (showTvConfig) {
       <div class="proxy-config">
         <label for="tv-type">TV Type</label>
-        <select id="tv-type" [(ngModel)]="tvType" (ngModelChange)="clearTvSettings()">
+        <select id="tv-type" [(ngModel)]="tvType" (ngModelChange)="onTvTypeChange()">
           <option value="none">None</option>
           <option value="panasonic">Panasonic Viera</option>
         </select>
