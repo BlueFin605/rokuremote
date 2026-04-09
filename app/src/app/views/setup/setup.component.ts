@@ -74,8 +74,6 @@ export class SetupComponent implements OnInit {
       next: (info) => {
         this.deviceInfo = info;
         this.loading = false;
-        const dest = info.ecpEnabled ? '/apps' : '/remote';
-        setTimeout(() => this.router.navigate([dest]), 1000);
       },
       error: (err) => {
         this.loading = false;
@@ -203,6 +201,11 @@ export class SetupComponent implements OnInit {
     if (this.tvType === 'none') {
       this.clearTvSettings();
     }
+  }
+
+  close(): void {
+    const dest = this.roku.ecpEnabled ? '/apps' : '/remote';
+    this.router.navigate([dest]);
   }
 
   clearTvSettings(): void {

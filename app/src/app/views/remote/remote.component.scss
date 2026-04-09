@@ -263,6 +263,16 @@ button {
     border-radius: 8px;
   }
 
+  .setup-btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    background: $btn-bg;
+    border-radius: 8px;
+  }
+
   .disconnect-btn {
     width: 100%;
     padding: 0.75rem;

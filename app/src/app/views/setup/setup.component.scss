@@ -126,6 +126,20 @@
     font-size: 0.85rem;
     color: #2e7d32;
   }
+
+  .close-btn {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: #6c2dc7;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
 }
 
 .error {
