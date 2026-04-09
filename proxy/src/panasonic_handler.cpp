@@ -98,6 +98,12 @@ std::string PanasonicHandler::extract_xml_tag(const std::string& xml,
 }
 
 bool PanasonicHandler::sendKey(const std::string& ip, const std::string& action) {
+    // Mute uses the DMR RenderingControl endpoint (toggle via GetMute/SetMute)
+    // because NRC_MUTE-ONOFF is unreliable on many Panasonic models.
+    if (action == "mute") {
+        return toggleMute(ip);
+    }
+
     auto it = action_to_nrc_.find(action);
     if (it == action_to_nrc_.end()) {
         std::cerr << "[panasonic] Unknown action: " << action << "\n";
@@ -107,6 +113,29 @@ bool PanasonicHandler::sendKey(const std::string& ip, const std::string& action)
     std::string params = "<X_KeyEvent>" + it->second + "</X_KeyEvent>";
     std::string response = soap_request(ip, NRC_PATH, NRC_URN, "X_SendKey", params);
     return !response.empty();
+}
+
+bool PanasonicHandler::getMute(const std::string& ip) {
+    std::string params = "<InstanceID>0</InstanceID><Channel>Master</Channel>";
+    std::string response = soap_request(ip, DMR_PATH, DMR_URN, "GetMute", params);
+    if (response.empty()) return false;
+
+    std::string muted = extract_xml_tag(response, "CurrentMute");
+    return muted == "1" || muted == "true";
+}
+
+bool PanasonicHandler::setMute(const std::string& ip, bool mute) {
+    std::string params =
+        "<InstanceID>0</InstanceID>"
+        "<Channel>Master</Channel>"
+        "<DesiredMute>" + std::string(mute ? "1" : "0") + "</DesiredMute>";
+    std::string response = soap_request(ip, DMR_PATH, DMR_URN, "SetMute", params);
+    return !response.empty();
+}
+
+bool PanasonicHandler::toggleMute(const std::string& ip) {
+    bool current = getMute(ip);
+    return setMute(ip, !current);
 }
 
 int PanasonicHandler::getVolume(const std::string& ip) {
