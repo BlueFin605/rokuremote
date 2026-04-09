@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RokuService, RokuDeviceInfo } from '../../services/roku.service';
 import { ProxyService, ProxyDevice } from '../../services/proxy.service';
+import { TvService, TvType, DiscoveredTv } from '../../services/tv.service';
 
 @Component({
   selector: 'app-setup',
@@ -24,12 +25,26 @@ export class SetupComponent implements OnInit {
   showProxyConfig = false;
   browserOrigin = '';
 
+  // TV settings
+  showTvConfig = false;
+  tvType: TvType;
+  tvIpAddress: string;
+  tvTesting = false;
+  tvError: string | null = null;
+  tvSuccess = false;
+  tvPairingRequired = false;
+  tvDiscovering = false;
+  discoveredTvs: DiscoveredTv[] = [];
+
   constructor(
     private roku: RokuService,
     public proxy: ProxyService,
+    private tv: TvService,
     private router: Router,
   ) {
     this.proxyUrl = proxy.getProxyUrl();
+    this.tvType = tv.type;
+    this.tvIpAddress = tv.ip ?? '';
     if (typeof window !== 'undefined') {
       this.browserOrigin = window.location.origin;
     }
@@ -115,5 +130,76 @@ export class SetupComponent implements OnInit {
 
   effectiveProxyTarget(): string {
     return this.isSameOriginProxyMode() ? this.browserOrigin : this.proxy.getProxyUrl();
+  }
+
+  // --- TV Settings ---
+
+  saveTvSettings(): void {
+    if (this.tvType === 'none') {
+      this.tv.configure('none', null);
+      this.tvSuccess = false;
+      this.tvError = null;
+      this.tvPairingRequired = false;
+      return;
+    }
+
+    if (!this.tvIpAddress.trim()) {
+      this.tvError = 'Enter the TV IP address.';
+      return;
+    }
+
+    this.tv.configure(this.tvType, this.tvIpAddress.trim());
+    this.testTvConnection();
+  }
+
+  testTvConnection(): void {
+    this.tvTesting = true;
+    this.tvError = null;
+    this.tvSuccess = false;
+    this.tvPairingRequired = false;
+
+    this.tv.testConnection().subscribe(result => {
+      this.tvTesting = false;
+      if (result.ok) {
+        this.tvSuccess = true;
+      } else if (result.pairingRequired) {
+        this.tvPairingRequired = true;
+        this.tvError = 'This TV requires pairing. Pairing support coming soon.';
+      } else {
+        this.tvError = 'TV not found at this IP. Check the address and make sure the TV is on.';
+      }
+    });
+  }
+
+  discoverTvs(): void {
+    if (this.tvType === 'none') return;
+
+    this.tvDiscovering = true;
+    this.discoveredTvs = [];
+
+    this.tv.discover().subscribe({
+      next: (tvs) => {
+        this.discoveredTvs = tvs;
+        this.tvDiscovering = false;
+      },
+      error: () => {
+        this.tvDiscovering = false;
+      },
+    });
+  }
+
+  selectTv(device: DiscoveredTv): void {
+    this.tvIpAddress = device.ip;
+    this.saveTvSettings();
+  }
+
+  clearTvSettings(): void {
+    this.tvType = 'none';
+    this.tvIpAddress = '';
+    this.tv.configure('none', null);
+    this.tvSuccess = false;
+    this.tvError = null;
+    this.tvPairingRequired = false;
+    this.discoveredTvs = [];
   }
 }

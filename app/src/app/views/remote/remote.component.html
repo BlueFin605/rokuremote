@@ -5,6 +5,12 @@
   </div>
 }
 
+@if (tvError) {
+  <div class="banner tv-error">
+    TV unreachable
+  </div>
+}
+
 <div class="remote">
   <div class="top-row">
     <button class="nav-btn" (click)="press('Back')">Back</button>
@@ -12,7 +18,7 @@
     @if (ecpEnabled) {
       <button class="nav-btn apps" (click)="openApps()">Apps</button>
     }
-    <button class="nav-btn" (click)="press('PowerOff')">Power</button>
+    <button class="nav-btn" (click)="pressPower()">Power</button>
   </div>
 
   <div class="dpad">
@@ -37,18 +43,27 @@
   <div class="volume-row">
     <button
       class="vol-btn"
-      (pointerdown)="startVolumeRepeat('VolumeDown')"
+      (pointerdown)="startVolumeRepeat('down')"
       (pointerup)="stopVolumeRepeat()"
       (pointerleave)="stopVolumeRepeat()"
     >Vol &minus;</button>
-    <button class="vol-btn mute" (click)="press('VolumeMute')">Mute</button>
+    <button class="vol-btn mute" (click)="pressMute()">Mute</button>
     <button
       class="vol-btn"
-      (pointerdown)="startVolumeRepeat('VolumeUp')"
+      (pointerdown)="startVolumeRepeat('up')"
       (pointerup)="stopVolumeRepeat()"
       (pointerleave)="stopVolumeRepeat()"
     >Vol +</button>
   </div>
+
+  @if (tvConfigured) {
+    <div class="hdmi-row">
+      <button class="hdmi-btn" (click)="pressHdmi(1)">HDMI 1</button>
+      <button class="hdmi-btn" (click)="pressHdmi(2)">HDMI 2</button>
+      <button class="hdmi-btn" (click)="pressHdmi(3)">HDMI 3</button>
+      <button class="hdmi-btn" (click)="pressHdmi(4)">HDMI 4</button>
+    </div>
+  }
 
   <div class="text-row">
     <input
