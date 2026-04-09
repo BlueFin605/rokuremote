@@ -177,7 +177,7 @@ export class SetupComponent implements OnInit {
     this.tvDiscovering = true;
     this.discoveredTvs = [];
 
-    this.tv.discover().subscribe({
+    this.tv.discover(this.tvType).subscribe({
       next: (tvs) => {
         this.discoveredTvs = tvs;
         this.tvDiscovering = false;

@@ -92,12 +92,13 @@ export class TvService {
     );
   }
 
-  discover(): Observable<DiscoveredTv[]> {
+  discover(type?: TvType): Observable<DiscoveredTv[]> {
     const base = this.proxy.getProxyUrl()
       ? `${this.proxy.getProxyUrl()}/api`
       : '/api';
+    const tvType = type ?? this.tvType;
     return this.http.get<DiscoveredTv[]>(
-      `${base}/tv/discover?type=${this.tvType}`
+      `${base}/tv/discover?type=${tvType}`
     ).pipe(
       timeout(5000),
     );
