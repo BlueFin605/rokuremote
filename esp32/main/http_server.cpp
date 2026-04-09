@@ -408,10 +408,10 @@ static esp_err_t roku_post_handler(httpd_req_t* req) {
 // ---- TV Route Handlers ----
 
 // Extract path segment after /api/tv/keypress/
+static const char* TV_KEYPRESS_PREFIX = "/api/tv/keypress/";  // 17 chars
 static std::string get_tv_action(httpd_req_t* req) {
     const char* uri = req->uri;
-    // Skip "/api/tv/keypress/"
-    const char* action_start = uri + 18;
+    const char* action_start = uri + strlen(TV_KEYPRESS_PREFIX);
     const char* query = strchr(action_start, '?');
     if (query) {
         return std::string(action_start, query - action_start);
