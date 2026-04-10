@@ -6,13 +6,45 @@ How to run and test RokuRemote on your machine.
 
 ## Prerequisites
 
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) (for Aspire)
 - Node.js 20+
 - npm
 - CMake 3.20+ and a C++17 compiler (for the proxy)
 
-## Quick Start
+## Quick Start (Aspire)
 
-You need three terminals — one for the mock Roku, one for the proxy, and one for the Angular app.
+Aspire orchestrates all three services in one command with a unified dashboard for logs and monitoring.
+
+### First-time setup
+
+```powershell
+./setup-aspire.ps1
+```
+
+This checks prerequisites, builds the C++ proxy, installs npm dependencies, and builds the Aspire AppHost.
+
+### Start everything
+
+```powershell
+./start-aspire.ps1
+```
+
+This starts:
+- **Mock Roku** on port 8060 — fake ECP server with 14 apps
+- **C++ Proxy** on port 8080 — CORS gateway, SSDP, audio
+- **Angular App** on port 4200 — the web remote
+
+Open the Aspire Dashboard URL shown in the terminal to see logs from all services. Access the app at `http://localhost:4200`.
+
+### Connect
+
+On the setup screen, enter `localhost` as the Roku IP. The mock Roku server responds on port 8060, and the proxy forwards requests to it.
+
+---
+
+## Manual Start (without Aspire)
+
+You can also run each service in separate terminals.
 
 ### Terminal 1: Mock Roku
 
@@ -20,7 +52,7 @@ You need three terminals — one for the mock Roku, one for the proxy, and one f
 node mock/roku-mock.mjs
 ```
 
-This starts a fake Roku ECP server on port 8060. It has 14 apps (Netflix, Disney+, YouTube, etc.), generates coloured icons, and logs all keypresses to the terminal.
+Starts a fake Roku ECP server on port 8060. It has 14 apps (Netflix, Disney+, YouTube, etc.), generates coloured icons, and logs all keypresses to the terminal.
 
 ### Terminal 2: Proxy
 
@@ -31,7 +63,7 @@ cmake --build build
 ./build/roku-proxy --port 8080
 ```
 
-The proxy sits between the Angular app and the Roku (or mock). The Roku doesn't serve CORS headers, so the browser can't talk to it directly. The proxy forwards requests and adds CORS headers.
+The proxy sits between the Angular app and the Roku (or mock). The Roku doesn't serve CORS headers, so the browser can't talk to it directly.
 
 ### Terminal 3: Angular App
 
@@ -40,14 +72,14 @@ cd app
 ng serve
 ```
 
-This starts the Angular dev server on port 4200, bound to `0.0.0.0` so it's accessible from other devices on your network.
+Starts the Angular dev server on port 4200, bound to `0.0.0.0` so it's accessible from other devices on your network.
 
 ### Connect
 
 - **From your laptop:** Open `http://localhost:4200`
 - **From your phone:** Open `http://<your-laptop-ip>:4200` (must be on the same Wi-Fi)
 
-On the setup screen, enter `localhost` (from laptop) or your laptop's IP (from phone) as the Roku IP. The proxy must be running — all requests from the app go through it.
+On the setup screen, enter `localhost` (from laptop) or your laptop's IP (from phone) as the Roku IP.
 
 ---
 
@@ -101,13 +133,13 @@ If you have a real Roku on the same network, enter its IP address on the setup s
 
 ```
 RokuRemote/
-├── docs/           ← Declaration (findings, north star, flows, design, plans)
+├── aspire/         ← Aspire AppHost (orchestrates local dev)
 ├── app/            ← Angular web app (ng serve from here)
-├── mock/           ← Mock Roku ECP server (node, no dependencies)
+├── mock/           ← Mock Roku ECP server (node, one dependency)
 ├── proxy/          ← C++ desktop proxy (ECP forwarding, SSDP discovery, audio streaming)
 ├── esp32/          ← ESP32 firmware (same proxy, runs on microcontroller)
-├── infra/          ← CDK C# (not yet created)
-└── .gitignore
+├── infra/          ← CDK C# (S3 + CloudFront)
+└── docs/           ← Design docs and notes
 ```
 
 ---

@@ -19,33 +19,37 @@ RokuRemote/
 ├── esp32/          ← ESP32 firmware (same proxy for microcontroller)
 ├── mock/           ← Mock Roku server for testing
 ├── infra/          ← AWS CDK (S3 + CloudFront deployment)
+├── aspire/         ← Aspire AppHost (local development orchestration)
 └── docs/           ← Design docs and notes
 ```
 
 ## Quick Start
 
-### 1. Start the proxy
+### Local Development (Aspire)
 
-**Desktop (C++):**
+Aspire runs the mock Roku, proxy, and Angular app in one command with a unified dashboard.
 
-```bash
-cd proxy
-cmake -B build
-cmake --build build
-./build/roku-proxy --port 8080
+```powershell
+./setup-aspire.ps1    # first time: install deps, build proxy
+./start-aspire.ps1    # start everything
 ```
 
-**ESP32:** See [ESP32 setup](#esp32-proxy) below.
+Open `http://localhost:4200` and enter `localhost` as the Roku IP.
 
-### 2. Start the web app
+See [local-development.md](local-development.md) for the full setup guide including manual start, testing scenarios, and ESP32 details.
+
+### Local Development (Manual)
 
 ```bash
-cd app
-npm ci
-ng serve
-```
+# Terminal 1: Mock Roku
+node mock/roku-mock.mjs
 
-Open `http://localhost:4200` and enter your Roku's IP address.
+# Terminal 2: Proxy
+cd proxy && cmake -B build && cmake --build build && ./build/roku-proxy --port 8080
+
+# Terminal 3: Angular app
+cd app && npm ci && ng serve
+```
 
 ## Desktop Proxy
 
@@ -77,7 +81,7 @@ The ESP32 firmware runs the same proxy on a microcontroller — plug it in, conn
 
 **Option A: Pre-built firmware (no toolchain needed)**
 
-Download the `roku-proxy-esp32` artifact from the latest [Actions build](https://github.com/deanmitchell/RokuRemote/actions), then flash:
+Download the `roku-proxy-esp32` artifact from the latest [Actions build](../../actions), then flash:
 
 ```bash
 pip install esptool    # if not already installed
@@ -137,7 +141,7 @@ mDNS hostname: roku-proxy.local
 Roku proxy ready on http://roku-proxy.local:80
 ```
 
-Open `https://roku.bluefin605.com` on your phone.
+Open the hosted web app or `http://localhost:4200` on your phone.
 
 Recommended proxy URL order:
 1. `http://roku-proxy/`
@@ -168,12 +172,34 @@ Replace `COM3` with your serial port (`/dev/ttyUSB0` on Linux, `/dev/tty.usbseri
 
 ## Infrastructure
 
-The web app is hosted on AWS (S3 + CloudFront) and deployed via GitHub Actions on push to `master`.
+The web app is hosted on AWS (S3 + CloudFront). Infrastructure is managed with CDK (C#).
 
-See [infra/README.md](infra/README.md) for CDK commands.
+### Configuration
 
-**Live site:** https://roku.bluefin605.com
+Copy `config.example.json` to `config.json` and fill in your values:
 
-## Local Development
+```json
+{
+  "rokuremote": {
+    "prefix": "rokuremote",
+    "region": "ap-southeast-2",
+    "environment": "production",
+    "domain": "roku.yourdomain.com",
+    "certificateArnUsEast1": "arn:aws:acm:us-east-1:..."
+  }
+}
+```
 
-See [local-development.md](local-development.md) for the full development setup including the mock Roku server, testing scenarios, and private listening details.
+`domain` and `certificateArnUsEast1` are optional — without them, CloudFront serves on its default `*.cloudfront.net` domain.
+
+### Deploy
+
+From the `infra/` directory:
+
+```bash
+cdk bootstrap                                    # first time only
+cdk diff --context configFile=../config.json     # preview changes
+cdk deploy --context configFile=../config.json   # deploy to AWS
+```
+
+See [infra/README.md](infra/README.md) for full CDK details.

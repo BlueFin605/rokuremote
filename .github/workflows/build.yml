@@ -1,13 +1,17 @@
-name: Build & Deploy
+name: Build
 
 on:
   push:
     branches: [master]
-  workflow_dispatch:
+  pull_request:
+    branches: [master]
 
 jobs:
-  deploy-web:
+  build-web:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
 
     steps:
       - uses: actions/checkout@v4
@@ -20,25 +24,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: app
 
       - name: Build Angular app
         run: npx ng build --configuration production
-        working-directory: app
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-2
-
-      - name: Upload to S3
-        run: aws s3 sync app/dist/roku-remote/browser/ s3://rokuremote-pages-production --delete
-
-      - name: Invalidate CloudFront cache
-        run: |
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='rokuremote-pages-production.s3.ap-southeast-2.amazonaws.com'].Id" --output text)
-          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+          name: web-build
+          path: app/dist/roku-remote/browser
+          retention-days: 7
 
   build-esp32:
     runs-on: ubuntu-latest
