@@ -17,6 +17,7 @@ export class RemoteComponent implements OnInit, OnDestroy {
   tvError = false;
   private volumeRepeatTimer: ReturnType<typeof setInterval> | null = null;
   private subs: Subscription[] = [];
+  private audioCtx: AudioContext | null = null;
 
   get ecpEnabled(): boolean {
     return this.roku.ecpEnabled;
@@ -47,13 +48,16 @@ export class RemoteComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.stopVolumeRepeat();
     this.subs.forEach(s => s.unsubscribe());
+    this.audioCtx?.close();
   }
 
   press(key: RokuKey): void {
+    this.playClick();
     this.roku.keypress(key);
   }
 
   pressPower(): void {
+    this.playClick();
     if (this.tv.configured) {
       this.tv.command('power');
     } else {
@@ -62,6 +66,7 @@ export class RemoteComponent implements OnInit, OnDestroy {
   }
 
   pressMute(): void {
+    this.playClick();
     if (this.tv.configured) {
       this.tv.command('mute');
     } else {
@@ -70,17 +75,20 @@ export class RemoteComponent implements OnInit, OnDestroy {
   }
 
   pressHdmi(input: 1 | 2 | 3 | 4): void {
+    this.playClick();
     this.tv.command(`hdmi${input}` as TvAction);
   }
 
   sendText(): void {
     if (this.textInput.trim()) {
+      this.playClick();
       this.roku.sendText(this.textInput);
       this.textInput = '';
     }
   }
 
   startVolumeRepeat(direction: 'up' | 'down'): void {
+    this.playClick();
     if (this.tv.configured) {
       const action: TvAction = direction === 'up' ? 'volume_up' : 'volume_down';
       this.tv.command(action);
@@ -101,6 +109,30 @@ export class RemoteComponent implements OnInit, OnDestroy {
 
   openApps(): void {
     this.router.navigate(['/apps']);
+  }
+
+  private playClick(): void {
+    try {
+      this.audioCtx ??= new AudioContext();
+      const ctx = this.audioCtx;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1000, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.06);
+    } catch {
+      // audio unavailable
+    }
+    navigator.vibrate?.(12);
   }
 
   openAudio(): void {
