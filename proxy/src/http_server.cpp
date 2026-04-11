@@ -9,6 +9,8 @@
 #include <deque>
 #include <condition_variable>
 #include <iostream>
+#include <cstdlib>
+#include <cstdio>
 
 using json = nlohmann::json;
 
@@ -290,6 +292,55 @@ void HttpServer::setup_routes() {
             arr.push_back({{"ip", d.ip}, {"name", d.name}});
         }
         res.set_content(arr.dump(), "application/json");
+    });
+
+    // GET /proxy?url=<external-url> — Proxy requests to external servers to bypass CORS
+    srv.Get(R"(/proxy)", [](const httplib::Request& req, httplib::Response& res) {
+        std::string external_url = req.get_param_value("url");
+        if (external_url.empty()) {
+            res.status = 400;
+            res.set_content(R"({"error":"Missing url parameter"})", "application/json");
+            return;
+        }
+
+        // Use curl to fetch the external URL (supports both HTTP and HTTPS)
+        // Sanitize the URL to prevent injection attacks
+        std::string safe_url;
+        for (char c : external_url) {
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                (c >= '0' && c <= '9') || c == ':' || c == '/' || c == '.' ||
+                c == '-' || c == '_' || c == '?' || c == '=' || c == '&' || c == '#') {
+                safe_url += c;
+            }
+        }
+
+        // Execute curl to fetch the URL with a timeout
+        std::string cmd = "curl -s -m 10 --max-redirs 5 -A 'RokuProxy/1.0' '" + safe_url + "' 2>/dev/null";
+        FILE* pipe = popen(cmd.c_str(), "r");
+        if (!pipe) {
+            res.status = 502;
+            json err = {{"error", "Failed to execute proxy request"}};
+            res.set_content(err.dump(), "application/json");
+            return;
+        }
+
+        std::string body;
+        char buffer[256];
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            body += buffer;
+        }
+        int status = pclose(pipe);
+
+        if (status != 0) {
+            res.status = 502;
+            json err = {{"error", "Failed to fetch remote URL"}};
+            res.set_content(err.dump(), "application/json");
+            return;
+        }
+
+        res.status = 200;
+        res.set_header("Content-Type", "application/json");
+        res.set_content(body);
     });
 
     // GET /audio — Streaming Opus frames as binary.

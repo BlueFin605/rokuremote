@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { DemoModeService } from '../../services/demo-mode.service';
+import { ProxyService } from '../../services/proxy.service';
 
 interface VersionInfo {
   gitRefName?: string;
@@ -35,6 +36,7 @@ export class VersionsComponent implements OnInit {
     private http: HttpClient,
     private router: Router,
     public demoMode: DemoModeService,
+    private proxy: ProxyService,
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -128,7 +130,18 @@ export class VersionsComponent implements OnInit {
 
   private async readJson(path: string): Promise<VersionInfo | null> {
     try {
-      const url = `${VersionsComponent.FIRMWARE_BASE_URL}${path}?t=${Date.now()}`;
+      const proxyUrl = this.proxy.getProxyUrl();
+      let url: string;
+      
+      if (proxyUrl) {
+        // Route through proxy to avoid CORS issues
+        const externalUrl = `${VersionsComponent.FIRMWARE_BASE_URL}${path}`;
+        url = `${proxyUrl}/proxy?url=${encodeURIComponent(externalUrl)}&t=${Date.now()}`;
+      } else {
+        // Same-origin (served directly from ESP32), use relative path
+        url = `${path}?t=${Date.now()}`;
+      }
+      
       const result = await firstValueFrom(this.http.get<VersionInfo>(url));
       return result;
     } catch {
