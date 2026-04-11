@@ -18,6 +18,11 @@ export interface RokuApp {
   iconUrl: string;
 }
 
+export interface RebootDelays {
+  shortMs: number;
+  longMs: number;
+}
+
 export type RokuKey =
   | 'Home' | 'Back' | 'Select'
   | 'Up' | 'Down' | 'Left' | 'Right'
@@ -32,8 +37,12 @@ export class RokuService {
   private static readonly STORAGE_KEY = 'roku-ip';
   private static readonly TIMEOUT_MS = 3000;
   private static readonly THROTTLE_MS = 60;
+  private static readonly SHORT_DELAY_STORAGE_KEY = 'roku-short-delay-ms';
+  private static readonly LONG_DELAY_STORAGE_KEY = 'roku-long-delay-ms';
   private static readonly SHORT_DELAY_MS = 180;
   private static readonly LONG_DELAY_MS = 700;
+  private static readonly MIN_DELAY_MS = 50;
+  private static readonly MAX_DELAY_MS = 5000;
   private static readonly MOCK_DELAY_MS = 180;
 
   private static readonly ECP_KEY = 'roku-ecp-enabled';
@@ -44,6 +53,8 @@ export class RokuService {
   private connectionError = new Subject<void>();
   private _ecpEnabled = true;
   private activeAppId: string | null = null;
+  private shortDelayMs = RokuService.SHORT_DELAY_MS;
+  private longDelayMs = RokuService.LONG_DELAY_MS;
 
   private rokuUrl(path: string, ip?: string): string {
     const proxyUrl = this.proxy.getProxyUrl();
@@ -60,7 +71,28 @@ export class RokuService {
   constructor(private http: HttpClient, private proxy: ProxyService, private demoMode: DemoModeService) {
     this.rokuIp = localStorage.getItem(RokuService.STORAGE_KEY);
     this._ecpEnabled = localStorage.getItem(RokuService.ECP_KEY) !== 'false';
+    this.shortDelayMs = this.readDelayMs(RokuService.SHORT_DELAY_STORAGE_KEY, RokuService.SHORT_DELAY_MS);
+    this.longDelayMs = this.readDelayMs(RokuService.LONG_DELAY_STORAGE_KEY, RokuService.LONG_DELAY_MS);
     this.initCommandQueue();
+  }
+
+  getRebootDelays(): RebootDelays {
+    return {
+      shortMs: this.shortDelayMs,
+      longMs: this.longDelayMs,
+    };
+  }
+
+  setRebootDelays(delays: Partial<RebootDelays>): void {
+    if (delays.shortMs !== undefined) {
+      this.shortDelayMs = this.normalizeDelayMs(delays.shortMs, RokuService.SHORT_DELAY_MS);
+      localStorage.setItem(RokuService.SHORT_DELAY_STORAGE_KEY, String(this.shortDelayMs));
+    }
+
+    if (delays.longMs !== undefined) {
+      this.longDelayMs = this.normalizeDelayMs(delays.longMs, RokuService.LONG_DELAY_MS);
+      localStorage.setItem(RokuService.LONG_DELAY_STORAGE_KEY, String(this.longDelayMs));
+    }
   }
 
   getSavedIp(): string | null {
@@ -299,10 +331,25 @@ export class RokuService {
   private delayForPseudoKey(action: string, key: string): number | null {
     if (action !== 'keypress') return null;
 
-    if (key === 'short-delay') return RokuService.SHORT_DELAY_MS;
-    if (key === 'long-delay') return RokuService.LONG_DELAY_MS;
+    if (key === 'short-delay') return this.shortDelayMs;
+    if (key === 'long-delay') return this.longDelayMs;
 
     return null;
+  }
+
+  private readDelayMs(storageKey: string, defaultValue: number): number {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return defaultValue;
+
+    const parsed = Number(raw);
+    return this.normalizeDelayMs(parsed, defaultValue);
+  }
+
+  private normalizeDelayMs(value: number, fallback: number): number {
+    if (!Number.isFinite(value)) return fallback;
+
+    const rounded = Math.round(value);
+    return Math.min(RokuService.MAX_DELAY_MS, Math.max(RokuService.MIN_DELAY_MS, rounded));
   }
 
   private parseDeviceInfo(xml: string): RokuDeviceInfo {

@@ -31,7 +31,10 @@ export class SetupComponent implements OnInit {
 
   proxyUrl: string;
   showProxyConfig = false;
+  showRebootConfig = false;
   browserOrigin = '';
+  rebootShortDelayMs = 180;
+  rebootLongDelayMs = 700;
 
   // TV settings
   showTvConfig = false;
@@ -62,6 +65,7 @@ export class SetupComponent implements OnInit {
 
   ngOnInit(): void {
     void this.loadSiteVersion();
+    this.loadRebootDelaySettings();
 
     const savedIp = this.roku.getSavedIp();
     if (savedIp) {
@@ -126,6 +130,22 @@ export class SetupComponent implements OnInit {
     this.proxy.resetToDefault();
     this.proxyUrl = this.proxy.getProxyUrl();
     this.recheckProxy();
+  }
+
+  saveRebootDelays(): void {
+    this.roku.setRebootDelays({
+      shortMs: this.rebootShortDelayMs,
+      longMs: this.rebootLongDelayMs,
+    });
+    this.loadRebootDelaySettings();
+  }
+
+  resetRebootDelays(): void {
+    this.roku.setRebootDelays({
+      shortMs: 180,
+      longMs: 700,
+    });
+    this.loadRebootDelaySettings();
   }
 
   private recheckProxy(): void {
@@ -246,6 +266,12 @@ export class SetupComponent implements OnInit {
     this.tvError = null;
     this.tvPairingRequired = false;
     this.discoveredTvs = [];
+  }
+
+  private loadRebootDelaySettings(): void {
+    const delays = this.roku.getRebootDelays();
+    this.rebootShortDelayMs = delays.shortMs;
+    this.rebootLongDelayMs = delays.longMs;
   }
 
   private async loadSiteVersion(): Promise<void> {

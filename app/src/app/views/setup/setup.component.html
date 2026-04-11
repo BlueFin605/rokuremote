@@ -133,6 +133,48 @@
   </div>
 
   <div class="proxy-section">
+    <button class="proxy-toggle" (click)="showRebootConfig = !showRebootConfig">
+      Reboot Timing {{ showRebootConfig ? '&#9650;' : '&#9660;' }}
+    </button>
+
+    @if (showRebootConfig) {
+      <div class="proxy-config reboot-config">
+        <p class="hint">Tune command pacing used by Roku reboot automation.</p>
+
+        <label for="reboot-short-delay">Short Delay (ms)</label>
+        <div class="input-row">
+          <input
+            id="reboot-short-delay"
+            type="number"
+            min="50"
+            max="5000"
+            step="10"
+            [(ngModel)]="rebootShortDelayMs"
+          />
+        </div>
+
+        <label for="reboot-long-delay">Long Delay (ms)</label>
+        <div class="input-row">
+          <input
+            id="reboot-long-delay"
+            type="number"
+            min="50"
+            max="5000"
+            step="10"
+            [(ngModel)]="rebootLongDelayMs"
+          />
+        </div>
+
+        <div class="proxy-actions">
+          <button (click)="saveRebootDelays()">Save Timing</button>
+          <button class="reset-btn" (click)="resetRebootDelays()">Reset Defaults</button>
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <div class="proxy-section">
     <button class="proxy-toggle" (click)="showProxyConfig = !showProxyConfig">
       Proxy Settings {{ showProxyConfig ? '&#9650;' : '&#9660;' }}
     </button>

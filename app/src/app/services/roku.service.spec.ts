@@ -170,6 +170,27 @@ describe('RokuService', () => {
         tick(1200);
       }
     }));
+
+    it('should apply configured short-delay pseudo keypress without sending delay HTTP', fakeAsync(() => {
+      connectService();
+
+      service.setRebootDelays({ shortMs: 500 });
+      service.keypress('short-delay');
+      service.keypress('Home');
+
+      tick(520);
+      httpMock.expectNone(r => r.url === rokuUrl('keypress/Home', '192.168.1.100'));
+      httpMock.expectNone(r => r.url === rokuUrl('keypress/short-delay', '192.168.1.100'));
+
+      tick(80);
+      const req = httpMock.expectOne(r =>
+        r.url === rokuUrl('keypress/Home', '192.168.1.100') && r.method === 'POST'
+      );
+      req.flush('');
+      tick(100);
+
+      expect(localStorage.getItem('roku-short-delay-ms')).toBe('500');
+    }));
   });
 
   describe('sendText', () => {
