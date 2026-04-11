@@ -65,6 +65,18 @@ export class VersionsComponent implements OnInit {
     return sha.slice(0, 7);
   }
 
+  githubVersion(info: VersionInfo | null): string {
+    if (!info) return 'unknown';
+    if (info.firmwareVersion) return info.firmwareVersion;
+
+    const ref = info.gitRefName?.trim();
+    const sha = info.gitSha?.trim();
+    if (ref && sha) return `${ref}@${this.shortSha(sha)}`;
+    if (ref) return ref;
+    if (sha) return this.shortSha(sha);
+    return 'unknown';
+  }
+
   private origin(): string {
     if (typeof window === 'undefined') return '';
     return window.location.origin;

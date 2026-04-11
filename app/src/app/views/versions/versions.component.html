@@ -18,6 +18,7 @@
     <div class="status-card">
       <h3>Website Build</h3>
       @if (siteInfo) {
+        <p><strong>GitHub Version:</strong> {{ githubVersion(siteInfo) }}</p>
         <p><strong>Ref:</strong> {{ siteInfo.gitRefName || 'unknown' }}</p>
         <p><strong>SHA:</strong> {{ shortSha(siteInfo.gitSha) }}</p>
         <p><strong>Built:</strong> {{ siteInfo.builtAtUtc || 'unknown' }}</p>
@@ -31,6 +32,7 @@
       <h3>Firmware Download (Current Build)</h3>
       @if (selectedFirmwareInfo) {
         <p><strong>Path:</strong> {{ firmwareBasePath(selectedFirmwareInfo, '/firmware/latest') }}</p>
+        <p><strong>GitHub Version:</strong> {{ githubVersion(selectedFirmwareInfo) }}</p>
         <p><strong>Ref:</strong> {{ selectedFirmwareInfo.gitRefName || 'unknown' }}</p>
         <p><strong>SHA:</strong> {{ shortSha(selectedFirmwareInfo.gitSha) }}</p>
         @if (selectedFirmwareInfo.firmwareVersion) {
@@ -57,6 +59,7 @@
       <div class="status-card">
         <h3>Firmware Latest (Master)</h3>
         <p><strong>Path:</strong> {{ latestFirmwarePath }}</p>
+        <p><strong>GitHub Version:</strong> {{ githubVersion(latestFirmwareInfo) }}</p>
         <p><strong>Ref:</strong> {{ latestFirmwareInfo.gitRefName || 'unknown' }}</p>
         <p><strong>SHA:</strong> {{ shortSha(latestFirmwareInfo.gitSha) }}</p>
         @if (latestFirmwareInfo.firmwareVersion) {

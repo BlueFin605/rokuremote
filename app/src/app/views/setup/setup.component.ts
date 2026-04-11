@@ -1,9 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { RokuService, RokuDeviceInfo } from '../../services/roku.service';
 import { ProxyService, ProxyDevice } from '../../services/proxy.service';
 import { TvService, TvType, DiscoveredTv } from '../../services/tv.service';
+
+interface BuildVersionInfo {
+  gitRefName?: string;
+  gitSha?: string;
+  firmwareVersion?: string;
+}
 
 @Component({
   selector: 'app-setup',
@@ -35,9 +43,11 @@ export class SetupComponent implements OnInit {
   tvPairingRequired = false;
   tvDiscovering = false;
   discoveredTvs: DiscoveredTv[] = [];
+  siteVersion: BuildVersionInfo | null = null;
 
   constructor(
     private roku: RokuService,
+    private http: HttpClient,
     public proxy: ProxyService,
     private tv: TvService,
     private router: Router,
@@ -51,6 +61,8 @@ export class SetupComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    void this.loadSiteVersion();
+
     const savedIp = this.roku.getSavedIp();
     if (savedIp) {
       this.ipAddress = savedIp;
@@ -213,6 +225,19 @@ export class SetupComponent implements OnInit {
     this.router.navigate(['/versions']);
   }
 
+  githubVersionLabel(): string {
+    const info = this.siteVersion;
+    if (!info) return 'unknown';
+    if (info.firmwareVersion) return info.firmwareVersion;
+
+    const ref = info.gitRefName?.trim();
+    const sha = info.gitSha?.trim();
+    if (ref && sha) return `${ref}@${sha.slice(0, 7)}`;
+    if (ref) return ref;
+    if (sha) return sha.slice(0, 7);
+    return 'unknown';
+  }
+
   clearTvSettings(): void {
     this.tvType = 'none';
     this.tvIpAddress = '';
@@ -221,5 +246,15 @@ export class SetupComponent implements OnInit {
     this.tvError = null;
     this.tvPairingRequired = false;
     this.discoveredTvs = [];
+  }
+
+  private async loadSiteVersion(): Promise<void> {
+    try {
+      this.siteVersion = await firstValueFrom(
+        this.http.get<BuildVersionInfo>(`/version.json?t=${Date.now()}`),
+      );
+    } catch {
+      this.siteVersion = null;
+    }
   }
 }
