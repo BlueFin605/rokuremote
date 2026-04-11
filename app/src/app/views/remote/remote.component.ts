@@ -111,6 +111,10 @@ export class RemoteComponent implements OnInit, OnDestroy {
     this.router.navigate(['/setup']);
   }
 
+  openVersions(): void {
+    this.router.navigate(['/versions']);
+  }
+
   reconnect(): void {
     this.disconnected = false;
     this.router.navigate(['/setup']);

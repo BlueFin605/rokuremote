@@ -1,0 +1,83 @@
+import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { DemoModeService } from '../../services/demo-mode.service';
+
+interface VersionInfo {
+  gitRefName?: string;
+  gitSha?: string;
+  builtAtUtc?: string;
+  publishMode?: 'release' | 'branch' | string;
+  firmwarePath?: string;
+  firmwareLatestPath?: string;
+  firmwareVersion?: string;
+}
+
+@Component({
+  selector: 'app-versions',
+  templateUrl: './versions.component.html',
+  styleUrl: './versions.component.scss'
+})
+export class VersionsComponent implements OnInit {
+  loading = true;
+  siteInfo: VersionInfo | null = null;
+  selectedFirmwareInfo: VersionInfo | null = null;
+  latestFirmwareInfo: VersionInfo | null = null;
+
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    public demoMode: DemoModeService,
+  ) {}
+
+  async ngOnInit(): Promise<void> {
+    this.siteInfo = await this.readJson('/version.json');
+
+    const preferredPath = this.normalizePath(this.siteInfo?.firmwarePath ?? '/firmware/latest');
+    this.selectedFirmwareInfo = await this.readJson(`${preferredPath}/version.json`);
+
+    if (preferredPath !== '/firmware/latest') {
+      this.latestFirmwareInfo = await this.readJson('/firmware/latest/version.json');
+    }
+
+    this.loading = false;
+  }
+
+  goBack(): void {
+    this.router.navigate(['/setup']);
+  }
+
+  firmwareBasePath(info: VersionInfo | null, fallback: string): string {
+    return this.normalizePath(info?.firmwarePath ?? fallback);
+  }
+
+  firmwareFileUrl(basePath: string, relativeFile: string): string {
+    return `${this.origin()}${this.normalizePath(basePath)}/${relativeFile}`;
+  }
+
+  shortSha(sha: string | undefined): string {
+    if (!sha) return 'unknown';
+    return sha.slice(0, 7);
+  }
+
+  private origin(): string {
+    if (typeof window === 'undefined') return '';
+    return window.location.origin;
+  }
+
+  private normalizePath(path: string): string {
+    const trimmed = path.trim();
+    if (!trimmed.startsWith('/')) return `/${trimmed}`;
+    return trimmed;
+  }
+
+  private async readJson(path: string): Promise<VersionInfo | null> {
+    try {
+      const url = `${path}?t=${Date.now()}`;
+      return await firstValueFrom(this.http.get<VersionInfo>(url));
+    } catch {
+      return null;
+    }
+  }
+}

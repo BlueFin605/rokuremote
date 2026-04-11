@@ -1,0 +1,80 @@
+<div class="versions-view">
+  <div class="header">
+    <button class="back-btn" (click)="goBack()">&#9664; Setup</button>
+    <h2>Build Versions</h2>
+  </div>
+
+  @if (demoMode.enabled) {
+    <div class="status-card demo">
+      <p>Demo mode active. Version and download links still point to real firmware artifacts.</p>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="status-card">
+      <p>Loading version info...</p>
+    </div>
+  } @else {
+    <div class="status-card">
+      <h3>Website Build</h3>
+      @if (siteInfo) {
+        <p><strong>Ref:</strong> {{ siteInfo.gitRefName || 'unknown' }}</p>
+        <p><strong>SHA:</strong> {{ shortSha(siteInfo.gitSha) }}</p>
+        <p><strong>Built:</strong> {{ siteInfo.builtAtUtc || 'unknown' }}</p>
+        <p><strong>Mode:</strong> {{ siteInfo.publishMode || 'unknown' }}</p>
+      } @else {
+        <p>Version metadata not found.</p>
+      }
+    </div>
+
+    <div class="status-card">
+      <h3>Firmware Download (Current Build)</h3>
+      @if (selectedFirmwareInfo) {
+        <p><strong>Path:</strong> {{ firmwareBasePath(selectedFirmwareInfo, '/firmware/latest') }}</p>
+        <p><strong>Ref:</strong> {{ selectedFirmwareInfo.gitRefName || 'unknown' }}</p>
+        <p><strong>SHA:</strong> {{ shortSha(selectedFirmwareInfo.gitSha) }}</p>
+        @if (selectedFirmwareInfo.firmwareVersion) {
+          <p><strong>Version:</strong> {{ selectedFirmwareInfo.firmwareVersion }}</p>
+        }
+      } @else {
+        <p>Firmware metadata not found at the expected path.</p>
+      }
+
+      <div class="downloads">
+        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, '/firmware/latest'), 'roku-proxy-esp32.bin')" download>
+          Download app image (.bin)
+        </a>
+        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, '/firmware/latest'), 'bootloader/bootloader.bin')" download>
+          Download bootloader
+        </a>
+        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, '/firmware/latest'), 'partition_table/partition-table.bin')" download>
+          Download partition table
+        </a>
+      </div>
+    </div>
+
+    @if (latestFirmwareInfo) {
+      <div class="status-card">
+        <h3>Firmware Latest (Master)</h3>
+        <p><strong>Path:</strong> /firmware/latest</p>
+        <p><strong>Ref:</strong> {{ latestFirmwareInfo.gitRefName || 'unknown' }}</p>
+        <p><strong>SHA:</strong> {{ shortSha(latestFirmwareInfo.gitSha) }}</p>
+        @if (latestFirmwareInfo.firmwareVersion) {
+          <p><strong>Version:</strong> {{ latestFirmwareInfo.firmwareVersion }}</p>
+        }
+
+        <div class="downloads">
+          <a [href]="firmwareFileUrl('/firmware/latest', 'roku-proxy-esp32.bin')" download>
+            Download latest app image (.bin)
+          </a>
+          <a [href]="firmwareFileUrl('/firmware/latest', 'bootloader/bootloader.bin')" download>
+            Download latest bootloader
+          </a>
+          <a [href]="firmwareFileUrl('/firmware/latest', 'partition_table/partition-table.bin')" download>
+            Download latest partition table
+          </a>
+        </div>
+      </div>
+    }
+  }
+</div>

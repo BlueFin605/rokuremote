@@ -92,6 +92,10 @@ export class AudioComponent implements OnInit, OnDestroy {
     this.router.navigate(['/remote']);
   }
 
+  openVersions(): void {
+    this.router.navigate(['/versions']);
+  }
+
   private startPolling(): void {
     this.pollSub?.unsubscribe();
     // Fetch status immediately on entry, then every 5 seconds

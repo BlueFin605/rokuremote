@@ -2,6 +2,7 @@
   <div class="header">
     <button class="back-btn" (click)="goBack()">&#9664; Remote</button>
     <h2>Apps</h2>
+    <button class="refresh-btn" (click)="openVersions()">Versions</button>
     <button class="edit-btn" [class.active]="editing" (click)="toggleEdit()">
       {{ editing ? 'Done' : 'Edit' }}
     </button>

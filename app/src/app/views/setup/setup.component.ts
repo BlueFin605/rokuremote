@@ -209,6 +209,10 @@ export class SetupComponent implements OnInit {
     this.router.navigate([dest]);
   }
 
+  openVersions(): void {
+    this.router.navigate(['/versions']);
+  }
+
   clearTvSettings(): void {
     this.tvType = 'none';
     this.tvIpAddress = '';

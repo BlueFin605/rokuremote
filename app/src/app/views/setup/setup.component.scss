@@ -141,6 +141,24 @@
   cursor: pointer;
 }
 
+.versions-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6c2dc7;
+  background: transparent;
+  border: 1px solid #6c2dc7;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: #f4edff;
+  }
+}
+
 .error {
   margin-top: 1.5rem;
   padding: 1rem;
