@@ -59,6 +59,7 @@ export class DemoModeService {
     }
 
     if (
+      host === 'roku.bluefin605.com' ||
       host === 'reokuremote.bluefin605.com' ||
       host === 'rokuremote.bluefin605.com'
     ) {
