@@ -22,6 +22,8 @@ interface VersionInfo {
   styleUrl: './versions.component.scss'
 })
 export class VersionsComponent implements OnInit {
+  private static readonly FIRMWARE_BASE_URL = 'https://roku.bluefin605.com';
+
   loading = true;
   siteInfo: VersionInfo | null = null;
   selectedFirmwareInfo: VersionInfo | null = null;
@@ -72,7 +74,7 @@ export class VersionsComponent implements OnInit {
   }
 
   firmwareFileUrl(basePath: string, relativeFile: string): string {
-    return `${this.origin()}${this.normalizePath(basePath)}/${relativeFile}`;
+    return `${VersionsComponent.FIRMWARE_BASE_URL}${this.normalizePath(basePath)}/${relativeFile}`;
   }
 
   shortSha(sha: string | undefined): string {
@@ -90,11 +92,6 @@ export class VersionsComponent implements OnInit {
     if (ref) return ref;
     if (sha) return this.shortSha(sha);
     return 'unknown';
-  }
-
-  private origin(): string {
-    if (typeof window === 'undefined') return '';
-    return window.location.origin;
   }
 
   private normalizePath(path: string): string {
@@ -131,8 +128,9 @@ export class VersionsComponent implements OnInit {
 
   private async readJson(path: string): Promise<VersionInfo | null> {
     try {
-      const url = `${path}?t=${Date.now()}`;
-      return await firstValueFrom(this.http.get<VersionInfo>(url));
+      const url = `${VersionsComponent.FIRMWARE_BASE_URL}${path}?t=${Date.now()}`;
+      const result = await firstValueFrom(this.http.get<VersionInfo>(url));
+      return result;
     } catch {
       return null;
     }
