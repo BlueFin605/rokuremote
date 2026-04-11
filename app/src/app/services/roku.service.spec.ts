@@ -151,10 +151,15 @@ describe('RokuService', () => {
       tick();
 
       const expected = [
-        'Home', 'Home', 'Home', 'Home', 'Home',
+        'Home',
+        'Left',
+        'Up', 'Up', 'Up',
+        'Select',
         'Up',
-        'Rev', 'Rev',
-        'Fwd', 'Fwd',
+        'Select',
+        'Down', 'Down',
+        'Select',
+        'Select',
       ];
 
       for (const key of expected) {

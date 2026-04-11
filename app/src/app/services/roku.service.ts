@@ -137,13 +137,26 @@ export class RokuService {
     this.keypress('Home');
   }
 
-  // Roku restart sequence (Home x5, Up, Rewind x2, FastForward x2).
+  // Roku restart sequence: Navigate through Settings > System > System restart menu.
+  // Step 1: Home (get to dashboard)
+  // Step 2: Left (move focus to left menu)
+  // Step 3: Up multiple times (scroll to Settings)
+  // Step 4: Select (enter Settings)
+  // Step 5: Up (navigate to System)
+  // Step 6: Select (enter System)
+  // Step 7: Up/Down (navigate to System restart)
+  // Step 8-9: Select twice (enter and confirm restart)
   reboot(): void {
     const sequence: Array<RokuKey> = [
-      'Home', 'Home', 'Home', 'Home', 'Home',
-      'Up',
-      'Rev', 'Rev',
-      'Fwd', 'Fwd',
+      'Home',      // Step 1: Guarantee starting point (dashboard)
+      'Left',      // Step 2: Move focus to left menu
+      'Up', 'Up', 'Up',  // Step 3: Scroll to Settings (adjust count if needed for your Roku OS)
+      'Select',    // Step 4: Enter Settings
+      'Up',        // Step 5: Navigate to System
+      'Select',    // Step 6: Enter System
+      'Down', 'Down',  // Step 7: Navigate to System restart (may need adjustment)
+      'Select',    // Step 8: Enter restart prompt
+      'Select',    // Step 9: Confirm restart
     ];
 
     for (const key of sequence) {
