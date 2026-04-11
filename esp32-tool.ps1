@@ -1,6 +1,6 @@
 param(
     [Parameter(Position=0)]
-    [ValidateSet("flash", "monitor", "flash-monitor", "flash-url", "flash-monitor-url", "ports")]
+    [ValidateSet("flash", "monitor", "flash-monitor", "flash-url", "flash-monitor-url", "ports", "full-reset")]
     [string]$Command = "flash-monitor",
 
     [string]$Port = "COM4",
@@ -15,7 +15,8 @@ param(
     [string]$BootloaderRelativePath = "bootloader/bootloader.bin",
     [string]$PartitionRelativePath = "partition_table/partition-table.bin",
     [string]$AppRelativePath = "roku-proxy-esp32.bin",
-    [switch]$AutoSelectPort
+    [switch]$AutoSelectPort,
+    [switch]$Force
 )
 
 $esptool = "$env:LOCALAPPDATA\Arduino15\packages\esp32\tools\esptool_py\5.1.0\esptool.exe"
@@ -40,9 +41,9 @@ function Get-EffectiveSourcePath {
 }
 
 function Resolve-TargetPort {
-    $availablePorts = [System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object
+    $availablePorts = @([System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object)
 
-    if ($availablePorts.Contains($Port)) {
+    if ($availablePorts -contains $Port) {
         return $Port
     }
 
@@ -62,7 +63,7 @@ function Resolve-TargetPort {
 }
 
 function Show-Ports {
-    $ports = [System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object
+    $ports = @([System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object)
     if ($ports.Count -eq 0) {
         Write-Host "No serial ports detected." -ForegroundColor Yellow
         return
@@ -226,6 +227,51 @@ function Monitor {
     }
 }
 
+function FullReset {
+    $targetPort = Resolve-TargetPort
+
+    if (-not $Force) {
+        Write-Host "WARNING: full-reset will erase all flash contents on $targetPort." -ForegroundColor Yellow
+        Write-Host "This clears firmware, credentials, and stored settings." -ForegroundColor Yellow
+        $confirmation = Read-Host "Type ERASE to continue"
+        if ($confirmation -ne "ERASE") {
+            Write-Host "Full reset canceled." -ForegroundColor Yellow
+            return
+        }
+    }
+
+    $chipCandidates = @($Chip)
+    if (-not $PSBoundParameters.ContainsKey("Chip")) {
+        if ($Chip -eq "esp32s3") {
+            $chipCandidates += "esp32"
+        } else {
+            $chipCandidates += "esp32s3"
+        }
+    }
+
+    $resetSucceeded = $false
+    foreach ($candidateChip in $chipCandidates) {
+        if ($candidateChip -ne $Chip) {
+            Write-Host "Chip auto-fallback: retrying full reset with '$candidateChip'." -ForegroundColor Yellow
+        }
+
+        Write-Host "Erasing full flash on $targetPort (chip: $candidateChip)..." -ForegroundColor Cyan
+        & $esptool --chip $candidateChip --port $targetPort erase-flash
+
+        if ($LASTEXITCODE -eq 0) {
+            $resetSucceeded = $true
+            break
+        }
+    }
+
+    if (-not $resetSucceeded) {
+        Write-Host "Full reset failed." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Full reset complete. Reflash firmware before normal operation." -ForegroundColor Green
+}
+
 switch ($Command) {
     "flash" {
         Flash
@@ -269,5 +315,8 @@ switch ($Command) {
 
         Start-Sleep -Seconds 2
         Monitor
+    }
+    "full-reset" {
+        FullReset
     }
 }

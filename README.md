@@ -225,6 +225,24 @@ For uncommon board layouts, you can override image names and offsets directly:
   -BootloaderOffset 0x1000 -PartitionOffset 0x8000 -AppOffset 0x10000
 ```
 
+### Reset Commands with `esp32-tool.ps1`
+
+Use these when Wi-Fi credentials are wrong or when you want to start from a clean device.
+
+```powershell
+# Erase full flash (firmware + credentials + settings)
+./esp32-tool.ps1 full-reset -Port COM5
+
+# Non-interactive full erase
+./esp32-tool.ps1 full-reset -Port COM5 -Force
+```
+
+Notes:
+
+- `full-reset` erases everything. Reflash firmware afterwards.
+- If `-Chip` is not specified and the default chip does not match, the script auto-fallbacks to the other chip (`esp32` <-> `esp32s3`).
+- For Wi-Fi only reset (without erasing firmware), hold the BOOT button during startup for ~2 seconds to clear saved credentials from NVS, then reboot.
+
 ### Troubleshooting
 
 | Problem | Fix |
