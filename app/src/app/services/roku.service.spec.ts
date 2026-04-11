@@ -167,7 +167,7 @@ describe('RokuService', () => {
           r.url === rokuUrl(`keypress/${key}`, '192.168.1.100') && r.method === 'POST'
         );
         req.flush('');
-        tick(100);
+        tick(1200);
       }
     }));
   });

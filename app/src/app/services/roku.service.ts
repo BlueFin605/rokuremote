@@ -32,6 +32,8 @@ export class RokuService {
   private static readonly STORAGE_KEY = 'roku-ip';
   private static readonly TIMEOUT_MS = 3000;
   private static readonly THROTTLE_MS = 60;
+  private static readonly SHORT_DELAY_MS = 180;
+  private static readonly LONG_DELAY_MS = 700;
   private static readonly MOCK_DELAY_MS = 180;
 
   private static readonly ECP_KEY = 'roku-ecp-enabled';
@@ -147,15 +149,26 @@ export class RokuService {
   // Step 7: Up/Down (navigate to System restart)
   // Step 8-9: Select twice (enter and confirm restart)
   reboot(): void {
-    const sequence: Array<RokuKey> = [
+    const sequence: string[] = [
       'Home',      // Step 1: Guarantee starting point (dashboard)
+      'long-delay',
       'Left',      // Step 2: Move focus to left menu
-      'Up', 'Up', 'Up',  // Step 3: Scroll to Settings (adjust count if needed for your Roku OS)
+      'short-delay',
+      'Up', 'short-delay',
+      'Up', 'short-delay',
+      'Up',  // Step 3: Scroll to Settings (adjust count if needed for your Roku OS)
+      'short-delay',
       'Select',    // Step 4: Enter Settings
+      'short-delay',
       'Up',        // Step 5: Navigate to System
+      'short-delay',
       'Select',    // Step 6: Enter System
-      'Down', 'Down',  // Step 7: Navigate to System restart (may need adjustment)
+      'short-delay',
+      'Down', 'short-delay',
+      'Down',  // Step 7: Navigate to System restart (may need adjustment)
+      'short-delay',
       'Select',    // Step 8: Enter restart prompt
+      'short-delay',
       'Select',    // Step 9: Confirm restart
     ];
 
@@ -267,6 +280,11 @@ export class RokuService {
   }
 
   private sendCommand(action: string, key: string): Observable<string> {
+    const delayMs = this.delayForPseudoKey(action, key);
+    if (delayMs !== null) {
+      return of('OK').pipe(delay(delayMs));
+    }
+
     if (this.demoMode.enabled) {
       return of('OK').pipe(delay(RokuService.THROTTLE_MS));
     }
@@ -276,6 +294,15 @@ export class RokuService {
     }).pipe(
       timeout(RokuService.TIMEOUT_MS),
     );
+  }
+
+  private delayForPseudoKey(action: string, key: string): number | null {
+    if (action !== 'keypress') return null;
+
+    if (key === 'short-delay') return RokuService.SHORT_DELAY_MS;
+    if (key === 'long-delay') return RokuService.LONG_DELAY_MS;
+
+    return null;
   }
 
   private parseDeviceInfo(xml: string): RokuDeviceInfo {
