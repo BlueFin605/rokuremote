@@ -31,7 +31,7 @@
     <div class="status-card">
       <h3>Firmware Download (Current Build)</h3>
       @if (selectedFirmwareInfo) {
-        <p><strong>Path:</strong> {{ firmwareBasePath(selectedFirmwareInfo, '/firmware/latest') }}</p>
+        <p><strong>Path:</strong> {{ firmwareBasePath(selectedFirmwareInfo, selectedFirmwarePath) }}</p>
         <p><strong>GitHub Version:</strong> {{ githubVersion(selectedFirmwareInfo) }}</p>
         <p><strong>Ref:</strong> {{ selectedFirmwareInfo.gitRefName || 'unknown' }}</p>
         <p><strong>SHA:</strong> {{ shortSha(selectedFirmwareInfo.gitSha) }}</p>
@@ -43,13 +43,13 @@
       }
 
       <div class="downloads">
-        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, '/firmware/latest'), 'roku-proxy-esp32.bin')" download>
+        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, selectedFirmwarePath), 'roku-proxy-esp32.bin')" download>
           Download app image (.bin)
         </a>
-        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, '/firmware/latest'), 'bootloader/bootloader.bin')" download>
+        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, selectedFirmwarePath), 'bootloader/bootloader.bin')" download>
           Download bootloader
         </a>
-        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, '/firmware/latest'), 'partition_table/partition-table.bin')" download>
+        <a [href]="firmwareFileUrl(firmwareBasePath(selectedFirmwareInfo, selectedFirmwarePath), 'partition_table/partition-table.bin')" download>
           Download partition table
         </a>
       </div>

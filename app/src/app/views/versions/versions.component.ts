@@ -26,7 +26,8 @@ export class VersionsComponent implements OnInit {
   siteInfo: VersionInfo | null = null;
   selectedFirmwareInfo: VersionInfo | null = null;
   latestFirmwareInfo: VersionInfo | null = null;
-  latestFirmwarePath = '/firmware/latest/esp32s3';
+  selectedFirmwarePath = '/firmware/latest';
+  latestFirmwarePath = '/firmware/latest';
 
   constructor(
     private http: HttpClient,
@@ -37,12 +38,26 @@ export class VersionsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.siteInfo = await this.readJson('/version.json');
 
-    const preferredPath = this.normalizePath(this.siteInfo?.firmwarePath ?? '/firmware/latest/esp32s3');
-    this.latestFirmwarePath = this.normalizePath(this.siteInfo?.firmwareLatestPath ?? '/firmware/latest/esp32s3');
-    this.selectedFirmwareInfo = await this.readJson(`${preferredPath}/version.json`);
+    const preferredPath = this.normalizePath(this.siteInfo?.firmwarePath ?? '/firmware/latest');
+    const preferredLatestPath = this.normalizePath(this.siteInfo?.firmwareLatestPath ?? '/firmware/latest');
 
-    if (preferredPath !== this.latestFirmwarePath) {
-      this.latestFirmwareInfo = await this.readJson(`${this.latestFirmwarePath}/version.json`);
+    const selectedFirmware = await this.loadFirmwareInfo(preferredPath);
+    if (selectedFirmware) {
+      this.selectedFirmwarePath = selectedFirmware.path;
+      this.selectedFirmwareInfo = selectedFirmware.info;
+    }
+
+    if (preferredPath !== preferredLatestPath) {
+      const latestFirmware = await this.loadFirmwareInfo(preferredLatestPath);
+      if (latestFirmware) {
+        this.latestFirmwarePath = latestFirmware.path;
+        this.latestFirmwareInfo = latestFirmware.info;
+      } else {
+        this.latestFirmwarePath = preferredLatestPath;
+      }
+    } else {
+      this.latestFirmwarePath = this.selectedFirmwarePath;
+      this.latestFirmwareInfo = this.selectedFirmwareInfo;
     }
 
     this.loading = false;
@@ -86,6 +101,32 @@ export class VersionsComponent implements OnInit {
     const trimmed = path.trim();
     if (!trimmed.startsWith('/')) return `/${trimmed}`;
     return trimmed;
+  }
+
+  private async loadFirmwareInfo(startPath: string): Promise<{ path: string; info: VersionInfo } | null> {
+    const candidates = this.firmwareMetadataCandidates(startPath);
+    for (const candidate of candidates) {
+      const info = await this.readJson(`${candidate}/version.json`);
+      if (info) {
+        return { path: candidate, info };
+      }
+    }
+    return null;
+  }
+
+  private firmwareMetadataCandidates(startPath: string): string[] {
+    const normalized = this.normalizePath(startPath);
+    const parent = normalized.replace(/\/(esp32s3|esp32)$/i, '');
+
+    const candidates = [normalized];
+    if (parent !== normalized) {
+      candidates.push(parent);
+    } else {
+      candidates.push(`${normalized}/esp32s3`);
+      candidates.push(`${normalized}/esp32`);
+    }
+
+    return [...new Set(candidates)];
   }
 
   private async readJson(path: string): Promise<VersionInfo | null> {
