@@ -193,6 +193,38 @@ Or flash and then open serial monitor:
 
 This avoids sharing local files and gives everyone a single stable download URL.
 
+### Multi-Board Flashing with `esp32-tool.ps1`
+
+The helper script supports both ESP32 and ESP32-S3 style layouts:
+
+```powershell
+# List currently available COM ports
+./esp32-tool.ps1 ports
+
+# Flash classic ESP32 boards
+./esp32-tool.ps1 flash -Chip esp32 -Port COM3
+
+# Flash ESP32-S3 boards
+./esp32-tool.ps1 flash -Chip esp32s3 -Port COM4
+```
+
+If you host separate board builds in subfolders (for example `firmware/latest/esp32` and `firmware/latest/esp32s3`), use:
+
+```powershell
+./esp32-tool.ps1 flash-url -Chip esp32 -FirmwareFlavor esp32 -Port COM3 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+./esp32-tool.ps1 flash-url -Chip esp32s3 -FirmwareFlavor esp32s3 -Port COM4 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+```
+
+For uncommon board layouts, you can override image names and offsets directly:
+
+```powershell
+./esp32-tool.ps1 flash -Chip esp32 -Port COM3 `
+  -BootloaderRelativePath "myboot/bootloader.bin" `
+  -PartitionRelativePath "myboot/partitions.bin" `
+  -AppRelativePath "myboot/app.bin" `
+  -BootloaderOffset 0x1000 -PartitionOffset 0x8000 -AppOffset 0x10000
+```
+
 ### Troubleshooting
 
 | Problem | Fix |

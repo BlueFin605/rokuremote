@@ -11,6 +11,8 @@ interface VersionInfo {
   publishMode?: 'release' | 'branch' | string;
   firmwarePath?: string;
   firmwareLatestPath?: string;
+  firmwarePaths?: Record<string, string>;
+  firmwareLatestPaths?: Record<string, string>;
   firmwareVersion?: string;
 }
 
@@ -24,6 +26,7 @@ export class VersionsComponent implements OnInit {
   siteInfo: VersionInfo | null = null;
   selectedFirmwareInfo: VersionInfo | null = null;
   latestFirmwareInfo: VersionInfo | null = null;
+  latestFirmwarePath = '/firmware/latest/esp32s3';
 
   constructor(
     private http: HttpClient,
@@ -34,11 +37,12 @@ export class VersionsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.siteInfo = await this.readJson('/version.json');
 
-    const preferredPath = this.normalizePath(this.siteInfo?.firmwarePath ?? '/firmware/latest');
+    const preferredPath = this.normalizePath(this.siteInfo?.firmwarePath ?? '/firmware/latest/esp32s3');
+    this.latestFirmwarePath = this.normalizePath(this.siteInfo?.firmwareLatestPath ?? '/firmware/latest/esp32s3');
     this.selectedFirmwareInfo = await this.readJson(`${preferredPath}/version.json`);
 
-    if (preferredPath !== '/firmware/latest') {
-      this.latestFirmwareInfo = await this.readJson('/firmware/latest/version.json');
+    if (preferredPath !== this.latestFirmwarePath) {
+      this.latestFirmwareInfo = await this.readJson(`${this.latestFirmwarePath}/version.json`);
     }
 
     this.loading = false;

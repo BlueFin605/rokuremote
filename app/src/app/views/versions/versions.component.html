@@ -56,7 +56,7 @@
     @if (latestFirmwareInfo) {
       <div class="status-card">
         <h3>Firmware Latest (Master)</h3>
-        <p><strong>Path:</strong> /firmware/latest</p>
+        <p><strong>Path:</strong> {{ latestFirmwarePath }}</p>
         <p><strong>Ref:</strong> {{ latestFirmwareInfo.gitRefName || 'unknown' }}</p>
         <p><strong>SHA:</strong> {{ shortSha(latestFirmwareInfo.gitSha) }}</p>
         @if (latestFirmwareInfo.firmwareVersion) {
@@ -64,13 +64,13 @@
         }
 
         <div class="downloads">
-          <a [href]="firmwareFileUrl('/firmware/latest', 'roku-proxy-esp32.bin')" download>
+          <a [href]="firmwareFileUrl(latestFirmwarePath, 'roku-proxy-esp32.bin')" download>
             Download latest app image (.bin)
           </a>
-          <a [href]="firmwareFileUrl('/firmware/latest', 'bootloader/bootloader.bin')" download>
+          <a [href]="firmwareFileUrl(latestFirmwarePath, 'bootloader/bootloader.bin')" download>
             Download latest bootloader
           </a>
-          <a [href]="firmwareFileUrl('/firmware/latest', 'partition_table/partition-table.bin')" download>
+          <a [href]="firmwareFileUrl(latestFirmwarePath, 'partition_table/partition-table.bin')" download>
             Download latest partition table
           </a>
         </div>

@@ -1,14 +1,78 @@
 param(
     [Parameter(Position=0)]
-    [ValidateSet("flash", "monitor", "flash-monitor", "flash-url", "flash-monitor-url")]
+    [ValidateSet("flash", "monitor", "flash-monitor", "flash-url", "flash-monitor-url", "ports")]
     [string]$Command = "flash-monitor",
 
     [string]$Port = "COM4",
+    [ValidateSet("esp32", "esp32s3")]
+    [string]$Chip = "esp32s3",
+    [string]$FirmwareFlavor = "",
     [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32",
-    [string]$FirmwareUrlBase = ""
+    [string]$FirmwareUrlBase = "",
+    [string]$BootloaderOffset = "",
+    [string]$PartitionOffset = "0x8000",
+    [string]$AppOffset = "0x10000",
+    [string]$BootloaderRelativePath = "bootloader/bootloader.bin",
+    [string]$PartitionRelativePath = "partition_table/partition-table.bin",
+    [string]$AppRelativePath = "roku-proxy-esp32.bin",
+    [switch]$AutoSelectPort
 )
 
 $esptool = "$env:LOCALAPPDATA\Arduino15\packages\esp32\tools\esptool_py\5.1.0\esptool.exe"
+
+function Get-EffectiveSourcePath {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$BasePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
+        return $BasePath
+    }
+
+    $candidate = Join-Path $BasePath $FirmwareFlavor
+    if (Test-Path $candidate) {
+        return $candidate
+    }
+
+    Write-Host "Firmware flavor '$FirmwareFlavor' requested, but folder not found: $candidate" -ForegroundColor Red
+    exit 1
+}
+
+function Resolve-TargetPort {
+    $availablePorts = [System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object
+
+    if ($availablePorts.Contains($Port)) {
+        return $Port
+    }
+
+    if ($AutoSelectPort -and $availablePorts.Count -eq 1) {
+        $selected = $availablePorts[0]
+        Write-Host "Requested port $Port not available. Auto-selected $selected." -ForegroundColor Yellow
+        return $selected
+    }
+
+    Write-Host "Selected port $Port is not currently available." -ForegroundColor Red
+    if ($availablePorts.Count -gt 0) {
+        Write-Host "Available ports: $($availablePorts -join ', ')" -ForegroundColor Yellow
+    } else {
+        Write-Host "No serial ports detected." -ForegroundColor Yellow
+    }
+    exit 1
+}
+
+function Show-Ports {
+    $ports = [System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object
+    if ($ports.Count -eq 0) {
+        Write-Host "No serial ports detected." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Available serial ports:" -ForegroundColor Cyan
+    foreach ($p in $ports) {
+        Write-Host "  $p"
+    }
+}
 
 function Download-FirmwareFromUrl {
     param(
@@ -17,16 +81,18 @@ function Download-FirmwareFromUrl {
     )
 
     $baseUrl = $UrlBase.TrimEnd('/')
+    if (-not [string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
+        $baseUrl = "$baseUrl/$FirmwareFlavor"
+    }
+
     $downloadRoot = Join-Path $env:TEMP ("roku-proxy-esp32-" + [Guid]::NewGuid().ToString("N"))
 
     New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $downloadRoot "bootloader") -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $downloadRoot "partition_table") -Force | Out-Null
 
     $files = @(
-        @{ Relative = "bootloader/bootloader.bin"; Local = Join-Path $downloadRoot "bootloader/bootloader.bin" },
-        @{ Relative = "partition_table/partition-table.bin"; Local = Join-Path $downloadRoot "partition_table/partition-table.bin" },
-        @{ Relative = "roku-proxy-esp32.bin"; Local = Join-Path $downloadRoot "roku-proxy-esp32.bin" }
+        @{ Relative = $BootloaderRelativePath; Local = Join-Path $downloadRoot $BootloaderRelativePath },
+        @{ Relative = $PartitionRelativePath; Local = Join-Path $downloadRoot $PartitionRelativePath },
+        @{ Relative = $AppRelativePath; Local = Join-Path $downloadRoot $AppRelativePath }
     )
 
     Write-Host "Downloading firmware from $baseUrl" -ForegroundColor Cyan
@@ -34,6 +100,10 @@ function Download-FirmwareFromUrl {
         $url = "$baseUrl/$($file.Relative)"
         Write-Host "  $url"
         try {
+            $targetDir = Split-Path $file.Local -Parent
+            if (-not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+            }
             Invoke-WebRequest -Uri $url -OutFile $file.Local
         } catch {
             Write-Host "Failed to download: $url" -ForegroundColor Red
@@ -50,9 +120,11 @@ function Flash {
         [string]$SourcePath = $FirmwarePath
     )
 
-    $bootloader = Join-Path $SourcePath "bootloader\bootloader.bin"
-    $partition  = Join-Path $SourcePath "partition_table\partition-table.bin"
-    $app        = Join-Path $SourcePath "roku-proxy-esp32.bin"
+    $effectiveSource = Get-EffectiveSourcePath -BasePath $SourcePath
+
+    $bootloader = Join-Path $effectiveSource $BootloaderRelativePath
+    $partition  = Join-Path $effectiveSource $PartitionRelativePath
+    $app        = Join-Path $effectiveSource $AppRelativePath
 
     foreach ($f in @($bootloader, $partition, $app)) {
         if (-not (Test-Path $f)) {
@@ -61,11 +133,19 @@ function Flash {
         }
     }
 
-    Write-Host "Flashing to $Port..." -ForegroundColor Cyan
-    & $esptool --chip esp32s3 --port $Port --baud 460800 write-flash -z `
-        0x0 $bootloader `
-        0x8000 $partition `
-        0x10000 $app
+    $targetPort = Resolve-TargetPort
+
+    $bootloaderOffset = if ([string]::IsNullOrWhiteSpace($BootloaderOffset)) {
+        if ($Chip -eq "esp32") { "0x1000" } else { "0x0" }
+    } else {
+        $BootloaderOffset
+    }
+
+    Write-Host "Flashing $Chip to $targetPort..." -ForegroundColor Cyan
+    & $esptool --chip $Chip --port $targetPort --baud 460800 write-flash -z `
+        $bootloaderOffset $bootloader `
+        $PartitionOffset $partition `
+        $AppOffset $app
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Flash failed." -ForegroundColor Red
@@ -140,6 +220,9 @@ function Monitor {
 switch ($Command) {
     "flash" {
         Flash
+    }
+    "ports" {
+        Show-Ports
     }
     "monitor" {
         Monitor
