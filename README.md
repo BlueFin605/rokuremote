@@ -193,6 +193,8 @@ Or flash and then open serial monitor:
 
 This avoids sharing local files and gives everyone a single stable download URL.
 
+Note: You can find published ESP32 firmware images and version listings at https://roku.bluefin605.com/versions.
+
 ### Multi-Board Flashing with `esp32-tool.ps1`
 
 The helper script supports both ESP32 and ESP32-S3 style layouts:

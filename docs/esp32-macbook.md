@@ -129,6 +129,8 @@ Use the `esp32-tool.sh` script to flash and monitor:
 ./esp32-tool.sh flash-monitor /dev/cu.SLAB_USBtoUART ~/Downloads/roku-proxy-esp32  # custom firmware path
 ```
 
+Note: You can find published ESP32 firmware images and version listings at https://roku.bluefin605.com/versions.
+
 ### Firmware Path
 
 The firmware path defaults to `~/Downloads/roku-proxy-esp32` and expects this structure:
