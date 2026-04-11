@@ -7,7 +7,7 @@ param(
     [ValidateSet("esp32", "esp32s3")]
     [string]$Chip = "esp32s3",
     [string]$FirmwareFlavor = "",
-    [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32",
+    [string]$FirmwarePath = "",
     [string]$FirmwareUrlBase = "",
     [string]$BootloaderOffset = "",
     [string]$PartitionOffset = "0x8000",
@@ -20,6 +20,17 @@ param(
 )
 
 $esptool = "$env:LOCALAPPDATA\Arduino15\packages\esp32\tools\esptool_py\5.1.0\esptool.exe"
+$script:ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+function Resolve-DefaultFirmwarePath {
+    # Mirror esp32-tool.sh behavior: prefer local build output, then local artifact folder.
+    $localBuild = Join-Path $script:ScriptDir "esp32\build"
+    if (Test-Path $localBuild) {
+        return $localBuild
+    }
+
+    return (Join-Path $script:ScriptDir "roku-proxy-esp32")
+}
 
 function Get-EffectiveSourcePath {
     param(
@@ -127,8 +138,16 @@ function Download-FirmwareFromUrl {
 
 function Flash {
     param(
-        [string]$SourcePath = $FirmwarePath
+        [string]$SourcePath
     )
+
+    if ([string]::IsNullOrWhiteSpace($SourcePath)) {
+        if ([string]::IsNullOrWhiteSpace($FirmwarePath)) {
+            $SourcePath = Resolve-DefaultFirmwarePath
+        } else {
+            $SourcePath = $FirmwarePath
+        }
+    }
 
     $effectiveSource = Get-EffectiveSourcePath -BasePath $SourcePath
 
