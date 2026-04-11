@@ -281,6 +281,13 @@ download_file() {
 
 download_firmware_from_url() {
     local base_url="${1%/}"
+    
+    # If URL-based firmware and no explicit flavor, auto-append chip name
+    # if URL doesn't already contain it (assumes URL structure like firmware/latest/{chip}/)
+    if [[ -n "$base_url" && -z "$FIRMWARE_FLAVOR" ]] && [[ "$base_url" != *"/$CHIP" ]]; then
+        base_url="$base_url/$CHIP"
+    fi
+    
     if [[ -n "$FIRMWARE_FLAVOR" && "${base_url##*/}" != "$FIRMWARE_FLAVOR" ]]; then
         base_url="$base_url/$FIRMWARE_FLAVOR"
     fi
