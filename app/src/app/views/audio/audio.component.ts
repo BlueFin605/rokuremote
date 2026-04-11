@@ -6,6 +6,7 @@ import { interval, Subscription, switchMap } from 'rxjs';
 import { ProxyService, ProxyStatus } from '../../services/proxy.service';
 import { RokuService } from '../../services/roku.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
+import { DemoModeService } from '../../services/demo-mode.service';
 
 @Component({
   selector: 'app-audio',
@@ -25,6 +26,7 @@ export class AudioComponent implements OnInit, OnDestroy {
     private proxy: ProxyService,
     private roku: RokuService,
     private audioPlayer: AudioPlayerService,
+    public demoMode: DemoModeService,
     private router: Router,
   ) {}
 
@@ -110,7 +112,9 @@ export class AudioComponent implements OnInit, OnDestroy {
     // Auto-start audio playback when proxy reaches streaming state
     if (status.state === 'streaming' && !this.wasStreaming) {
       this.wasStreaming = true;
-      this.audioPlayer.start(this.proxy.getAudioStreamUrl());
+      if (!this.demoMode.enabled) {
+        this.audioPlayer.start(this.proxy.getAudioStreamUrl());
+      }
     }
 
     // Reset when streaming stops

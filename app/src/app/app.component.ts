@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { DemoModeService } from './services/demo-mode.service';
 
 @Component({
   selector: 'app-root',
@@ -9,4 +10,6 @@ import { RouterOutlet } from '@angular/router';
 })
 export class AppComponent {
   title = 'roku-remote';
+
+  constructor(public demoMode: DemoModeService) {}
 }

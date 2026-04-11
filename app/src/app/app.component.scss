@@ -1,0 +1,14 @@
+.demo-banner {
+	position: sticky;
+	top: 0;
+	z-index: 2000;
+	width: 100%;
+	padding: 0.75rem 1rem;
+	text-align: center;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: #1f1300;
+	background: linear-gradient(90deg, #ffd166 0%, #ffbf69 100%);
+	border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}

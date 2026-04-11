@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, timeout, catchError, throwError, Subject, concatMap, delay, of } from 'rxjs';
 import { ProxyService } from './proxy.service';
+import { DemoModeService } from './demo-mode.service';
 
 export interface RokuDeviceInfo {
   name: string;
@@ -31,6 +32,7 @@ export class RokuService {
   private static readonly STORAGE_KEY = 'roku-ip';
   private static readonly TIMEOUT_MS = 3000;
   private static readonly THROTTLE_MS = 60;
+  private static readonly MOCK_DELAY_MS = 180;
 
   private static readonly ECP_KEY = 'roku-ecp-enabled';
   private static readonly DEVICE_INFO_KEY = 'roku-device-info';
@@ -39,6 +41,7 @@ export class RokuService {
   private commandQueue = new Subject<{ key: string; action: 'keypress' | 'keydown' | 'keyup' }>();
   private connectionError = new Subject<void>();
   private _ecpEnabled = true;
+  private activeAppId: string | null = null;
 
   private rokuUrl(path: string, ip?: string): string {
     const proxyUrl = this.proxy.getProxyUrl();
@@ -52,7 +55,7 @@ export class RokuService {
     return this._ecpEnabled;
   }
 
-  constructor(private http: HttpClient, private proxy: ProxyService) {
+  constructor(private http: HttpClient, private proxy: ProxyService, private demoMode: DemoModeService) {
     this.rokuIp = localStorage.getItem(RokuService.STORAGE_KEY);
     this._ecpEnabled = localStorage.getItem(RokuService.ECP_KEY) !== 'false';
     this.initCommandQueue();
@@ -63,6 +66,21 @@ export class RokuService {
   }
 
   connect(ip: string): Observable<RokuDeviceInfo> {
+    if (this.demoMode.enabled) {
+      const info: RokuDeviceInfo = {
+        name: 'Demo Roku',
+        model: 'Roku Ultra',
+        supportsPrivateListening: true,
+        ecpEnabled: true,
+      };
+      this.rokuIp = ip;
+      this._ecpEnabled = true;
+      localStorage.setItem(RokuService.STORAGE_KEY, ip);
+      localStorage.setItem(RokuService.ECP_KEY, 'true');
+      localStorage.setItem(RokuService.DEVICE_INFO_KEY, JSON.stringify(info));
+      return of(info).pipe(delay(RokuService.MOCK_DELAY_MS));
+    }
+
     return this.http.get(this.rokuUrl('query/device-info', ip), {
       responseType: 'text',
     }).pipe(
@@ -120,6 +138,17 @@ export class RokuService {
   }
 
   getApps(): Observable<RokuApp[]> {
+    if (this.demoMode.enabled) {
+      const apps: RokuApp[] = [
+        { id: '12', name: 'Netflix', version: '1.0.0', iconUrl: '' },
+        { id: '13', name: 'YouTube', version: '1.0.0', iconUrl: '' },
+        { id: '14', name: 'Disney+', version: '1.0.0', iconUrl: '' },
+        { id: '15', name: 'Hulu', version: '1.0.0', iconUrl: '' },
+        { id: '16', name: 'Apple TV', version: '1.0.0', iconUrl: '' },
+      ];
+      return of(apps).pipe(delay(RokuService.MOCK_DELAY_MS));
+    }
+
     return this.http.get(this.rokuUrl('query/apps'), {
       responseType: 'text',
     }).pipe(
@@ -130,6 +159,10 @@ export class RokuService {
   }
 
   getActiveApp(): Observable<string | null> {
+    if (this.demoMode.enabled) {
+      return of(this.activeAppId).pipe(delay(RokuService.MOCK_DELAY_MS));
+    }
+
     return this.http.get(this.rokuUrl('query/active-app'), {
       responseType: 'text',
     }).pipe(
@@ -149,6 +182,11 @@ export class RokuService {
   }
 
   launchApp(appId: string): Observable<string> {
+    if (this.demoMode.enabled) {
+      this.activeAppId = appId;
+      return of('OK').pipe(delay(RokuService.MOCK_DELAY_MS));
+    }
+
     return this.http.post(this.rokuUrl(`launch/${appId}`), null, {
       responseType: 'text',
     }).pipe(
@@ -195,6 +233,10 @@ export class RokuService {
   }
 
   private sendCommand(action: string, key: string): Observable<string> {
+    if (this.demoMode.enabled) {
+      return of('OK').pipe(delay(RokuService.THROTTLE_MS));
+    }
+
     return this.http.post(this.rokuUrl(`${action}/${key}`), null, {
       responseType: 'text',
     }).pipe(

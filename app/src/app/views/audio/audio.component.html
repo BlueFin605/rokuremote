@@ -4,6 +4,12 @@
     <h2>Private Listening</h2>
   </div>
 
+  @if (demoMode.enabled) {
+    <div class="status-card">
+      <p class="hint">Demo mode: private listening status is simulated and no real audio stream is played.</p>
+    </div>
+  }
+
   @if (!checking && !proxyAvailable) {
     <div class="status-card error">
       <p>Audio proxy not found.</p>
