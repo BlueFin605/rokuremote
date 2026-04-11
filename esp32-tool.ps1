@@ -1,18 +1,140 @@
 param(
     [Parameter(Position=0)]
-    [ValidateSet("flash", "monitor", "flash-monitor")]
+    [ValidateSet("flash", "monitor", "flash-monitor", "flash-url", "flash-monitor-url", "ports", "full-reset")]
     [string]$Command = "flash-monitor",
 
     [string]$Port = "COM4",
-    [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32"
+    [ValidateSet("esp32", "esp32s3")]
+    [string]$Chip = "esp32s3",
+    [string]$FirmwareFlavor = "",
+    [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32",
+    [string]$FirmwareUrlBase = "",
+    [string]$BootloaderOffset = "",
+    [string]$PartitionOffset = "0x8000",
+    [string]$AppOffset = "0x10000",
+    [string]$BootloaderRelativePath = "bootloader/bootloader.bin",
+    [string]$PartitionRelativePath = "partition_table/partition-table.bin",
+    [string]$AppRelativePath = "roku-proxy-esp32.bin",
+    [switch]$AutoSelectPort,
+    [switch]$Force
 )
 
 $esptool = "$env:LOCALAPPDATA\Arduino15\packages\esp32\tools\esptool_py\5.1.0\esptool.exe"
 
+function Get-EffectiveSourcePath {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$BasePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
+        return $BasePath
+    }
+
+    $candidate = Join-Path $BasePath $FirmwareFlavor
+    if (Test-Path $candidate) {
+        return $candidate
+    }
+
+    Write-Host "Firmware flavor '$FirmwareFlavor' requested, but folder not found: $candidate" -ForegroundColor Red
+    exit 1
+}
+
+function Resolve-TargetPort {
+    $availablePorts = @([System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object)
+
+    if ($availablePorts -contains $Port) {
+        return $Port
+    }
+
+    if ($AutoSelectPort -and $availablePorts.Count -eq 1) {
+        $selected = $availablePorts[0]
+        Write-Host "Requested port $Port not available. Auto-selected $selected." -ForegroundColor Yellow
+        return $selected
+    }
+
+    Write-Host "Selected port $Port is not currently available." -ForegroundColor Red
+    if ($availablePorts.Count -gt 0) {
+        Write-Host "Available ports: $($availablePorts -join ', ')" -ForegroundColor Yellow
+    } else {
+        Write-Host "No serial ports detected." -ForegroundColor Yellow
+    }
+    exit 1
+}
+
+function Show-Ports {
+    $ports = @([System.IO.Ports.SerialPort]::GetPortNames() | Sort-Object)
+    if ($ports.Count -eq 0) {
+        Write-Host "No serial ports detected." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Available serial ports:" -ForegroundColor Cyan
+    foreach ($p in $ports) {
+        Write-Host "  $p"
+    }
+}
+
+function Download-FirmwareFromUrl {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$UrlBase
+    )
+
+    $baseUrl = $UrlBase.TrimEnd('/')
+    if (-not [string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
+        # Only append the flavor when the caller passed a parent URL.
+        # This avoids ending up with .../esp32/esp32 when flavor is already included.
+        if (-not $baseUrl.EndsWith("/$FirmwareFlavor", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $baseUrl = "$baseUrl/$FirmwareFlavor"
+        }
+    }
+
+    $downloadRoot = Join-Path $env:TEMP ("roku-proxy-esp32-" + [Guid]::NewGuid().ToString("N"))
+    $downloadBase = if ([string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
+        $downloadRoot
+    } else {
+        Join-Path $downloadRoot $FirmwareFlavor
+    }
+
+    New-Item -ItemType Directory -Path $downloadBase -Force | Out-Null
+
+    $files = @(
+        @{ Relative = $BootloaderRelativePath; Local = Join-Path $downloadBase $BootloaderRelativePath },
+        @{ Relative = $PartitionRelativePath; Local = Join-Path $downloadBase $PartitionRelativePath },
+        @{ Relative = $AppRelativePath; Local = Join-Path $downloadBase $AppRelativePath }
+    )
+
+    Write-Host "Downloading firmware from $baseUrl" -ForegroundColor Cyan
+    foreach ($file in $files) {
+        $url = "$baseUrl/$($file.Relative)"
+        Write-Host "  $url"
+        try {
+            $targetDir = Split-Path $file.Local -Parent
+            if (-not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+            }
+            Invoke-WebRequest -Uri $url -OutFile $file.Local
+        } catch {
+            Write-Host "Failed to download: $url" -ForegroundColor Red
+            throw
+        }
+    }
+
+    Write-Host "Download complete: $downloadRoot" -ForegroundColor Green
+    return $downloadRoot
+}
+
 function Flash {
-    $bootloader = Join-Path $FirmwarePath "bootloader\bootloader.bin"
-    $partition  = Join-Path $FirmwarePath "partition_table\partition-table.bin"
-    $app        = Join-Path $FirmwarePath "roku-proxy-esp32.bin"
+    param(
+        [string]$SourcePath = $FirmwarePath
+    )
+
+    $effectiveSource = Get-EffectiveSourcePath -BasePath $SourcePath
+
+    $bootloader = Join-Path $effectiveSource $BootloaderRelativePath
+    $partition  = Join-Path $effectiveSource $PartitionRelativePath
+    $app        = Join-Path $effectiveSource $AppRelativePath
 
     foreach ($f in @($bootloader, $partition, $app)) {
         if (-not (Test-Path $f)) {
@@ -21,11 +143,19 @@ function Flash {
         }
     }
 
-    Write-Host "Flashing to $Port..." -ForegroundColor Cyan
-    & $esptool --chip esp32s3 --port $Port --baud 460800 write-flash -z `
-        0x0 $bootloader `
-        0x8000 $partition `
-        0x10000 $app
+    $targetPort = Resolve-TargetPort
+
+    $bootloaderOffset = if ([string]::IsNullOrWhiteSpace($BootloaderOffset)) {
+        if ($Chip -eq "esp32") { "0x1000" } else { "0x0" }
+    } else {
+        $BootloaderOffset
+    }
+
+    Write-Host "Flashing $Chip to $targetPort..." -ForegroundColor Cyan
+    & $esptool --chip $Chip --port $targetPort --baud 460800 write-flash -z `
+        $bootloaderOffset $bootloader `
+        $PartitionOffset $partition `
+        $AppOffset $app
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Flash failed." -ForegroundColor Red
@@ -97,8 +227,96 @@ function Monitor {
     }
 }
 
+function FullReset {
+    $targetPort = Resolve-TargetPort
+
+    if (-not $Force) {
+        Write-Host "WARNING: full-reset will erase all flash contents on $targetPort." -ForegroundColor Yellow
+        Write-Host "This clears firmware, credentials, and stored settings." -ForegroundColor Yellow
+        $confirmation = Read-Host "Type ERASE to continue"
+        if ($confirmation -ne "ERASE") {
+            Write-Host "Full reset canceled." -ForegroundColor Yellow
+            return
+        }
+    }
+
+    $chipCandidates = @($Chip)
+    if (-not $PSBoundParameters.ContainsKey("Chip")) {
+        if ($Chip -eq "esp32s3") {
+            $chipCandidates += "esp32"
+        } else {
+            $chipCandidates += "esp32s3"
+        }
+    }
+
+    $resetSucceeded = $false
+    foreach ($candidateChip in $chipCandidates) {
+        if ($candidateChip -ne $Chip) {
+            Write-Host "Chip auto-fallback: retrying full reset with '$candidateChip'." -ForegroundColor Yellow
+        }
+
+        Write-Host "Erasing full flash on $targetPort (chip: $candidateChip)..." -ForegroundColor Cyan
+        & $esptool --chip $candidateChip --port $targetPort erase-flash
+
+        if ($LASTEXITCODE -eq 0) {
+            $resetSucceeded = $true
+            break
+        }
+    }
+
+    if (-not $resetSucceeded) {
+        Write-Host "Full reset failed." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Full reset complete. Reflash firmware before normal operation." -ForegroundColor Green
+}
+
 switch ($Command) {
-    "flash"         { Flash }
-    "monitor"       { Monitor }
-    "flash-monitor" { Flash; Start-Sleep -Seconds 2; Monitor }
+    "flash" {
+        Flash
+    }
+    "ports" {
+        Show-Ports
+    }
+    "monitor" {
+        Monitor
+    }
+    "flash-monitor" {
+        Flash
+        Start-Sleep -Seconds 2
+        Monitor
+    }
+    "flash-url" {
+        if ([string]::IsNullOrWhiteSpace($FirmwareUrlBase)) {
+            Write-Host "FirmwareUrlBase is required for flash-url" -ForegroundColor Red
+            exit 1
+        }
+
+        $downloadPath = Download-FirmwareFromUrl -UrlBase $FirmwareUrlBase
+        try {
+            Flash -SourcePath $downloadPath
+        } finally {
+            Remove-Item -Recurse -Force $downloadPath -ErrorAction SilentlyContinue
+        }
+    }
+    "flash-monitor-url" {
+        if ([string]::IsNullOrWhiteSpace($FirmwareUrlBase)) {
+            Write-Host "FirmwareUrlBase is required for flash-monitor-url" -ForegroundColor Red
+            exit 1
+        }
+
+        $downloadPath = Download-FirmwareFromUrl -UrlBase $FirmwareUrlBase
+        try {
+            Flash -SourcePath $downloadPath
+        } finally {
+            Remove-Item -Recurse -Force $downloadPath -ErrorAction SilentlyContinue
+        }
+
+        Start-Sleep -Seconds 2
+        Monitor
+    }
+    "full-reset" {
+        FullReset
+    }
 }

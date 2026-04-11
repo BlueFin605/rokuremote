@@ -161,6 +161,88 @@ esptool --chip esp32s3 --port COM3 --baud 460800 write_flash -z \
 
 Replace `COM3` with your serial port (`/dev/ttyUSB0` on Linux, `/dev/tty.usbserial-*` on macOS).
 
+### Host Firmware on S3/CloudFront (Recommended)
+
+You can host firmware files on your existing S3 + CloudFront deployment and flash directly from a URL.
+
+1. Upload firmware files (same folder structure) to S3:
+
+```bash
+aws s3 cp bootloader/bootloader.bin s3://<bucket>/firmware/latest/bootloader/bootloader.bin
+aws s3 cp partition_table/partition-table.bin s3://<bucket>/firmware/latest/partition_table/partition-table.bin
+aws s3 cp roku-proxy-esp32.bin s3://<bucket>/firmware/latest/roku-proxy-esp32.bin
+```
+
+2. Invalidate CloudFront so clients get the latest files:
+
+```bash
+aws cloudfront create-invalidation --distribution-id <distribution-id> --paths "/firmware/latest/*"
+```
+
+3. Flash directly from your domain URL:
+
+```powershell
+./esp32-tool.ps1 flash-url -Port COM4 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+```
+
+Or flash and then open serial monitor:
+
+```powershell
+./esp32-tool.ps1 flash-monitor-url -Port COM4 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+```
+
+This avoids sharing local files and gives everyone a single stable download URL.
+
+### Multi-Board Flashing with `esp32-tool.ps1`
+
+The helper script supports both ESP32 and ESP32-S3 style layouts:
+
+```powershell
+# List currently available COM ports
+./esp32-tool.ps1 ports
+
+# Flash classic ESP32 boards
+./esp32-tool.ps1 flash -Chip esp32 -Port COM3
+
+# Flash ESP32-S3 boards
+./esp32-tool.ps1 flash -Chip esp32s3 -Port COM4
+```
+
+If you host separate board builds in subfolders (for example `firmware/latest/esp32` and `firmware/latest/esp32s3`), use:
+
+```powershell
+./esp32-tool.ps1 flash-url -Chip esp32 -FirmwareFlavor esp32 -Port COM3 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+./esp32-tool.ps1 flash-url -Chip esp32s3 -FirmwareFlavor esp32s3 -Port COM4 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+```
+
+For uncommon board layouts, you can override image names and offsets directly:
+
+```powershell
+./esp32-tool.ps1 flash -Chip esp32 -Port COM3 `
+  -BootloaderRelativePath "myboot/bootloader.bin" `
+  -PartitionRelativePath "myboot/partitions.bin" `
+  -AppRelativePath "myboot/app.bin" `
+  -BootloaderOffset 0x1000 -PartitionOffset 0x8000 -AppOffset 0x10000
+```
+
+### Reset Commands with `esp32-tool.ps1`
+
+Use these when Wi-Fi credentials are wrong or when you want to start from a clean device.
+
+```powershell
+# Erase full flash (firmware + credentials + settings)
+./esp32-tool.ps1 full-reset -Port COM5
+
+# Non-interactive full erase
+./esp32-tool.ps1 full-reset -Port COM5 -Force
+```
+
+Notes:
+
+- `full-reset` erases everything. Reflash firmware afterwards.
+- If `-Chip` is not specified and the default chip does not match, the script auto-fallbacks to the other chip (`esp32` <-> `esp32s3`).
+- For Wi-Fi only reset (without erasing firmware), hold the BOOT button during startup for ~2 seconds to clear saved credentials from NVS, then reboot.
+
 ### Troubleshooting
 
 | Problem | Fix |

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, timeout, catchError, of } from 'rxjs';
+import { Observable, map, timeout, catchError, of, delay } from 'rxjs';
+import { DemoModeService } from './demo-mode.service';
 
 export interface ProxyDevice {
   ip: string;
@@ -20,9 +21,11 @@ export class ProxyService {
   private static readonly STORAGE_KEY = 'proxy-url';
   private static readonly DEFAULT_URL = 'http://roku-proxy';
   private static readonly LEGACY_DEFAULT_URL = 'http://roku-proxy.local';
+  private static readonly MOCK_DELAY_MS = 220;
   private proxyUrl: string;
+  private mockStatus: ProxyStatus = { state: 'idle' };
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private demoMode: DemoModeService) {
     const savedUrl = localStorage.getItem(ProxyService.STORAGE_KEY);
     this.proxyUrl = savedUrl ?? ProxyService.detectDefaultUrl();
 
@@ -67,6 +70,9 @@ export class ProxyService {
   }
 
   isAvailable(): Observable<boolean> {
+    if (this.demoMode.enabled) {
+      return of(true).pipe(delay(ProxyService.MOCK_DELAY_MS));
+    }
     return this.http.get<ProxyStatus>(`${this.apiBase()}/status`).pipe(
       timeout(2000),
       map(() => true),
@@ -75,24 +81,41 @@ export class ProxyService {
   }
 
   discover(): Observable<ProxyDevice[]> {
+    if (this.demoMode.enabled) {
+      return of([
+        { ip: '192.168.1.24', name: 'Living Room Roku (Demo)', model: 'Roku Ultra' },
+        { ip: '192.168.1.51', name: 'Bedroom Roku (Demo)', model: 'Roku Streaming Stick' },
+      ]).pipe(delay(ProxyService.MOCK_DELAY_MS));
+    }
     return this.http.get<ProxyDevice[]>(`${this.apiBase()}/discover`).pipe(
       timeout(5000),
     );
   }
 
   startListening(rokuIp: string): Observable<void> {
+    if (this.demoMode.enabled) {
+      this.mockStatus = { state: 'streaming' };
+      return of(void 0).pipe(delay(ProxyService.MOCK_DELAY_MS));
+    }
     return this.http.post<void>(`${this.apiBase()}/start?roku=${rokuIp}`, null).pipe(
       timeout(5000),
     );
   }
 
   stopListening(): Observable<void> {
+    if (this.demoMode.enabled) {
+      this.mockStatus = { state: 'idle' };
+      return of(void 0).pipe(delay(ProxyService.MOCK_DELAY_MS));
+    }
     return this.http.post<void>(`${this.apiBase()}/stop`, null).pipe(
       timeout(3000),
     );
   }
 
   getStatus(): Observable<ProxyStatus> {
+    if (this.demoMode.enabled) {
+      return of(this.mockStatus).pipe(delay(ProxyService.MOCK_DELAY_MS));
+    }
     return this.http.get<ProxyStatus>(`${this.apiBase()}/status`).pipe(
       timeout(3000),
     );

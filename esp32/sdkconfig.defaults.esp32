@@ -1,0 +1,2 @@
+# ESP32 boards in current deployments use 4MB flash
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

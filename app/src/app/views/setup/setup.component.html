@@ -1,5 +1,6 @@
 <div class="setup">
   <h1>RokuRemote</h1>
+  <p class="build-meta">GitHub Version: {{ githubVersionLabel() }}</p>
 
   @if (proxyAvailable) {
     <div class="discover-section">
@@ -165,4 +166,6 @@
   @if (deviceInfo) {
     <button class="close-btn" (click)="close()">Close</button>
   }
+
+  <button class="versions-btn" (click)="openVersions()">Build Versions & Downloads</button>
 </div>

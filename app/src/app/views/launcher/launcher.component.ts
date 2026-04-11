@@ -97,6 +97,10 @@ export class LauncherComponent implements OnInit {
     this.router.navigate(['/remote']);
   }
 
+  openVersions(): void {
+    this.router.navigate(['/versions']);
+  }
+
   private loadActiveApp(): void {
     this.roku.getActiveApp().subscribe(id => {
       this.activeAppId = id;
