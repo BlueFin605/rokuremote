@@ -82,17 +82,26 @@ function Download-FirmwareFromUrl {
 
     $baseUrl = $UrlBase.TrimEnd('/')
     if (-not [string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
-        $baseUrl = "$baseUrl/$FirmwareFlavor"
+        # Only append the flavor when the caller passed a parent URL.
+        # This avoids ending up with .../esp32/esp32 when flavor is already included.
+        if (-not $baseUrl.EndsWith("/$FirmwareFlavor", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $baseUrl = "$baseUrl/$FirmwareFlavor"
+        }
     }
 
     $downloadRoot = Join-Path $env:TEMP ("roku-proxy-esp32-" + [Guid]::NewGuid().ToString("N"))
+    $downloadBase = if ([string]::IsNullOrWhiteSpace($FirmwareFlavor)) {
+        $downloadRoot
+    } else {
+        Join-Path $downloadRoot $FirmwareFlavor
+    }
 
-    New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path $downloadBase -Force | Out-Null
 
     $files = @(
-        @{ Relative = $BootloaderRelativePath; Local = Join-Path $downloadRoot $BootloaderRelativePath },
-        @{ Relative = $PartitionRelativePath; Local = Join-Path $downloadRoot $PartitionRelativePath },
-        @{ Relative = $AppRelativePath; Local = Join-Path $downloadRoot $AppRelativePath }
+        @{ Relative = $BootloaderRelativePath; Local = Join-Path $downloadBase $BootloaderRelativePath },
+        @{ Relative = $PartitionRelativePath; Local = Join-Path $downloadBase $PartitionRelativePath },
+        @{ Relative = $AppRelativePath; Local = Join-Path $downloadBase $AppRelativePath }
     )
 
     Write-Host "Downloading firmware from $baseUrl" -ForegroundColor Cyan
