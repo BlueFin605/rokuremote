@@ -18,6 +18,7 @@ APP_RELATIVE_PATH="roku-proxy-esp32.bin"
 AUTO_SELECT_PORT=0
 FORCE=0
 ESPTOOL=""
+ESPTOOL_PYMODULE=0
 
 usage() {
     cat <<EOF
@@ -193,7 +194,10 @@ list_ports() {
 
 resolve_target_port() {
     local ports=()
-    mapfile -t ports < <(list_ports)
+    local p
+    while IFS= read -r p; do
+        [[ -n "$p" ]] && ports+=("$p")
+    done < <(list_ports)
 
     if [[ -n "$PORT_ARG" ]]; then
         if [[ -e "$PORT_ARG" ]]; then
@@ -226,7 +230,10 @@ resolve_target_port() {
 
 show_ports() {
     local ports=()
-    mapfile -t ports < <(list_ports)
+    local p
+    while IFS= read -r p; do
+        [[ -n "$p" ]] && ports+=("$p")
+    done < <(list_ports)
     if [[ ${#ports[@]} -eq 0 ]]; then
         echo "No serial ports detected."
         return
@@ -242,9 +249,20 @@ ensure_esptool() {
         ESPTOOL="esptool.py"
     elif command -v esptool &>/dev/null; then
         ESPTOOL="esptool"
+    elif command -v python3 &>/dev/null && python3 -m esptool version &>/dev/null; then
+        ESPTOOL="python3"
+        ESPTOOL_PYMODULE=1
     else
         echo "Error: esptool not found. Install with: pip install esptool" >&2
         exit 1
+    fi
+}
+
+run_esptool() {
+    if [[ $ESPTOOL_PYMODULE -eq 1 ]]; then
+        "$ESPTOOL" -m esptool "$@"
+    else
+        "$ESPTOOL" "$@"
     fi
 }
 
@@ -324,19 +342,25 @@ flash() {
     # Verify image type when esptool can report it to avoid wrong-target flashes.
     local expected_type
     local image_type
+    local image_info
     if [[ "$CHIP" == "esp32" ]]; then
         expected_type="ESP32"
     else
         expected_type="ESP32-S3"
     fi
-    image_type="$($ESPTOOL --chip auto image_info "$bootloader" 2>/dev/null | awk -F': ' '/Detected image type:/ {print $2; exit}')"
+    if ! image_info="$(run_esptool --chip auto image_info "$bootloader" 2>/dev/null)"; then
+        echo "Error: bootloader is not a valid ESP image: $bootloader" >&2
+        echo "The firmware URL may be returning HTML fallback content instead of binary files." >&2
+        exit 1
+    fi
+    image_type="$(printf '%s\n' "$image_info" | awk -F': ' '/Detected image type:/ {print $2; exit}')"
     if [[ -n "$image_type" && "$image_type" != "$expected_type" ]]; then
         echo "Error: bootloader image type is '$image_type' (expected '$expected_type')." >&2
         exit 1
     fi
 
     echo "Flashing $CHIP to $target_port..."
-    $ESPTOOL --chip "$CHIP" --port "$target_port" --baud 460800 write_flash -z \
+    run_esptool --chip "$CHIP" --port "$target_port" --baud 460800 write_flash -z \
         "$bootloader_offset" "$bootloader" \
         "$PARTITION_OFFSET" "$partition" \
         "$APP_OFFSET" "$app"
@@ -407,7 +431,7 @@ full_reset() {
             echo "Chip auto-fallback: retrying full reset with '$candidate'."
         fi
         echo "Erasing full flash on $target_port (chip: $candidate)..."
-        if $ESPTOOL --chip "$candidate" --port "$target_port" erase_flash; then
+        if run_esptool --chip "$candidate" --port "$target_port" erase_flash; then
             echo "Full reset complete. Reflash firmware before normal operation."
             return
         fi
