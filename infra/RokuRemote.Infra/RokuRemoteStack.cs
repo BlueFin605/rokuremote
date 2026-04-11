@@ -38,6 +38,15 @@ public class RokuRemoteStack : Stack
                 ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 CachePolicy = CachePolicy.CACHING_OPTIMIZED
             },
+            AdditionalBehaviors = new Dictionary<string, IBehaviorOptions>
+            {
+                ["/firmware/*"] = new BehaviorOptions
+                {
+                    Origin = S3BucketOrigin.WithOriginAccessControl(bucket),
+                    ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    CachePolicy = CachePolicy.CACHING_DISABLED
+                }
+            },
             DefaultRootObject = "index.html",
             Certificate = certificate,
             DomainNames = domainNames,
