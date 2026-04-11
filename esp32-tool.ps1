@@ -1,18 +1,58 @@
 param(
     [Parameter(Position=0)]
-    [ValidateSet("flash", "monitor", "flash-monitor")]
+    [ValidateSet("flash", "monitor", "flash-monitor", "flash-url", "flash-monitor-url")]
     [string]$Command = "flash-monitor",
 
     [string]$Port = "COM4",
-    [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32"
+    [string]$FirmwarePath = "$env:USERPROFILE\Downloads\roku-proxy-esp32",
+    [string]$FirmwareUrlBase = ""
 )
 
 $esptool = "$env:LOCALAPPDATA\Arduino15\packages\esp32\tools\esptool_py\5.1.0\esptool.exe"
 
+function Download-FirmwareFromUrl {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$UrlBase
+    )
+
+    $baseUrl = $UrlBase.TrimEnd('/')
+    $downloadRoot = Join-Path $env:TEMP ("roku-proxy-esp32-" + [Guid]::NewGuid().ToString("N"))
+
+    New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $downloadRoot "bootloader") -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $downloadRoot "partition_table") -Force | Out-Null
+
+    $files = @(
+        @{ Relative = "bootloader/bootloader.bin"; Local = Join-Path $downloadRoot "bootloader/bootloader.bin" },
+        @{ Relative = "partition_table/partition-table.bin"; Local = Join-Path $downloadRoot "partition_table/partition-table.bin" },
+        @{ Relative = "roku-proxy-esp32.bin"; Local = Join-Path $downloadRoot "roku-proxy-esp32.bin" }
+    )
+
+    Write-Host "Downloading firmware from $baseUrl" -ForegroundColor Cyan
+    foreach ($file in $files) {
+        $url = "$baseUrl/$($file.Relative)"
+        Write-Host "  $url"
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $file.Local
+        } catch {
+            Write-Host "Failed to download: $url" -ForegroundColor Red
+            throw
+        }
+    }
+
+    Write-Host "Download complete: $downloadRoot" -ForegroundColor Green
+    return $downloadRoot
+}
+
 function Flash {
-    $bootloader = Join-Path $FirmwarePath "bootloader\bootloader.bin"
-    $partition  = Join-Path $FirmwarePath "partition_table\partition-table.bin"
-    $app        = Join-Path $FirmwarePath "roku-proxy-esp32.bin"
+    param(
+        [string]$SourcePath = $FirmwarePath
+    )
+
+    $bootloader = Join-Path $SourcePath "bootloader\bootloader.bin"
+    $partition  = Join-Path $SourcePath "partition_table\partition-table.bin"
+    $app        = Join-Path $SourcePath "roku-proxy-esp32.bin"
 
     foreach ($f in @($bootloader, $partition, $app)) {
         if (-not (Test-Path $f)) {
@@ -98,7 +138,44 @@ function Monitor {
 }
 
 switch ($Command) {
-    "flash"         { Flash }
-    "monitor"       { Monitor }
-    "flash-monitor" { Flash; Start-Sleep -Seconds 2; Monitor }
+    "flash" {
+        Flash
+    }
+    "monitor" {
+        Monitor
+    }
+    "flash-monitor" {
+        Flash
+        Start-Sleep -Seconds 2
+        Monitor
+    }
+    "flash-url" {
+        if ([string]::IsNullOrWhiteSpace($FirmwareUrlBase)) {
+            Write-Host "FirmwareUrlBase is required for flash-url" -ForegroundColor Red
+            exit 1
+        }
+
+        $downloadPath = Download-FirmwareFromUrl -UrlBase $FirmwareUrlBase
+        try {
+            Flash -SourcePath $downloadPath
+        } finally {
+            Remove-Item -Recurse -Force $downloadPath -ErrorAction SilentlyContinue
+        }
+    }
+    "flash-monitor-url" {
+        if ([string]::IsNullOrWhiteSpace($FirmwareUrlBase)) {
+            Write-Host "FirmwareUrlBase is required for flash-monitor-url" -ForegroundColor Red
+            exit 1
+        }
+
+        $downloadPath = Download-FirmwareFromUrl -UrlBase $FirmwareUrlBase
+        try {
+            Flash -SourcePath $downloadPath
+        } finally {
+            Remove-Item -Recurse -Force $downloadPath -ErrorAction SilentlyContinue
+        }
+
+        Start-Sleep -Seconds 2
+        Monitor
+    }
 }

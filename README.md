@@ -161,6 +161,38 @@ esptool --chip esp32s3 --port COM3 --baud 460800 write_flash -z \
 
 Replace `COM3` with your serial port (`/dev/ttyUSB0` on Linux, `/dev/tty.usbserial-*` on macOS).
 
+### Host Firmware on S3/CloudFront (Recommended)
+
+You can host firmware files on your existing S3 + CloudFront deployment and flash directly from a URL.
+
+1. Upload firmware files (same folder structure) to S3:
+
+```bash
+aws s3 cp bootloader/bootloader.bin s3://<bucket>/firmware/latest/bootloader/bootloader.bin
+aws s3 cp partition_table/partition-table.bin s3://<bucket>/firmware/latest/partition_table/partition-table.bin
+aws s3 cp roku-proxy-esp32.bin s3://<bucket>/firmware/latest/roku-proxy-esp32.bin
+```
+
+2. Invalidate CloudFront so clients get the latest files:
+
+```bash
+aws cloudfront create-invalidation --distribution-id <distribution-id> --paths "/firmware/latest/*"
+```
+
+3. Flash directly from your domain URL:
+
+```powershell
+./esp32-tool.ps1 flash-url -Port COM4 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+```
+
+Or flash and then open serial monitor:
+
+```powershell
+./esp32-tool.ps1 flash-monitor-url -Port COM4 -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest
+```
+
+This avoids sharing local files and gives everyone a single stable download URL.
+
 ### Troubleshooting
 
 | Problem | Fix |
