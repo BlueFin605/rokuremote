@@ -57,7 +57,7 @@ export class RemoteComponent implements OnInit, OnDestroy {
     if (this.tv.configured) {
       this.tv.command('power');
     } else {
-      this.roku.keypress('PowerOff');
+      this.roku.wake();
     }
   }
 
@@ -105,6 +105,10 @@ export class RemoteComponent implements OnInit, OnDestroy {
 
   openAudio(): void {
     this.router.navigate(['/audio']);
+  }
+
+  rebootRoku(): void {
+    this.roku.reboot();
   }
 
   openSetup(): void {

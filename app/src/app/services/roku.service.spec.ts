@@ -124,6 +124,47 @@ describe('RokuService', () => {
       req.flush('');
       tick(100);
     }));
+
+    it('should send wake sequence as PowerOn then Home', fakeAsync(() => {
+      connectService();
+
+      service.wake();
+      tick();
+
+      const req1 = httpMock.expectOne(r =>
+        r.url === rokuUrl('keypress/PowerOn', '192.168.1.100') && r.method === 'POST'
+      );
+      req1.flush('');
+      tick(100);
+
+      const req2 = httpMock.expectOne(r =>
+        r.url === rokuUrl('keypress/Home', '192.168.1.100') && r.method === 'POST'
+      );
+      req2.flush('');
+      tick(100);
+    }));
+
+    it('should send reboot sequence', fakeAsync(() => {
+      connectService();
+
+      service.reboot();
+      tick();
+
+      const expected = [
+        'Home', 'Home', 'Home', 'Home', 'Home',
+        'Up',
+        'Rev', 'Rev',
+        'Fwd', 'Fwd',
+      ];
+
+      for (const key of expected) {
+        const req = httpMock.expectOne(r =>
+          r.url === rokuUrl(`keypress/${key}`, '192.168.1.100') && r.method === 'POST'
+        );
+        req.flush('');
+        tick(100);
+      }
+    }));
   });
 
   describe('sendText', () => {

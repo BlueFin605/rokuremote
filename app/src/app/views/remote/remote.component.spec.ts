@@ -96,4 +96,11 @@ describe('RemoteComponent', () => {
       .find(b => b.textContent?.trim() === 'Private Listening');
     expect(btn).toBeTruthy();
   });
+
+  it('should have a reboot roku button', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const btn = Array.from(el.querySelectorAll('button'))
+      .find(b => b.textContent?.trim() === 'Reboot Roku');
+    expect(btn).toBeTruthy();
+  });
 });

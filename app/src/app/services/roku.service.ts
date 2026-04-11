@@ -130,6 +130,27 @@ export class RokuService {
     this.commandQueue.next({ key, action: 'keyup' });
   }
 
+  // Best-effort wake sequence for uncertain power state.
+  // PowerOn may wake supported Roku models; Home helps bring UI to foreground.
+  wake(): void {
+    this.keypress('PowerOn');
+    this.keypress('Home');
+  }
+
+  // Roku restart sequence (Home x5, Up, Rewind x2, FastForward x2).
+  reboot(): void {
+    const sequence: Array<RokuKey> = [
+      'Home', 'Home', 'Home', 'Home', 'Home',
+      'Up',
+      'Rev', 'Rev',
+      'Fwd', 'Fwd',
+    ];
+
+    for (const key of sequence) {
+      this.keypress(key);
+    }
+  }
+
   sendText(text: string): void {
     for (const char of text) {
       const encoded = encodeURIComponent(char);
