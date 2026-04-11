@@ -100,18 +100,22 @@
             }
           }
 
-          <label for="tv-ip">TV IP Address</label>
-          <div class="input-row">
-            <input
-              id="tv-ip"
-              type="text"
-              [(ngModel)]="tvIpAddress"
-              placeholder="192.168.1.50"
-              (keydown.enter)="saveTvSettings()"
-            />
-            <button (click)="saveTvSettings()" [disabled]="tvTesting || !tvIpAddress.trim()">
-              {{ tvTesting ? 'Saving...' : 'Save' }}
-            </button>
+          <div class="connect-form tv-connect-form">
+            <label for="tv-ip">TV IP Address</label>
+            <div class="input-row">
+              <input
+                id="tv-ip"
+                type="text"
+                [(ngModel)]="tvIpAddress"
+                placeholder="192.168.1.50"
+                (keydown.enter)="saveTvSettings()"
+                [disabled]="tvTesting"
+              />
+              <button (click)="saveTvSettings()" [disabled]="tvTesting || !tvIpAddress.trim()">
+                {{ tvTesting ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
+            <p class="hint">Find your TV IP in your TV network settings.</p>
           </div>
 
           @if (tvSuccess) {
