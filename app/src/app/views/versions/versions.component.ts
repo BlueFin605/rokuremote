@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { DemoModeService } from '../../services/demo-mode.service';
-import { ProxyService } from '../../services/proxy.service';
 
 interface VersionInfo {
   gitRefName?: string;
@@ -36,11 +35,10 @@ export class VersionsComponent implements OnInit {
     private http: HttpClient,
     private router: Router,
     public demoMode: DemoModeService,
-    private proxy: ProxyService,
   ) {}
 
   async ngOnInit(): Promise<void> {
-    this.siteInfo = await this.readJson('/version.json');
+    this.siteInfo = await this.readSiteJson('/version.json');
 
     const preferredPath = this.normalizePath(this.siteInfo?.firmwarePath ?? '/firmware/latest');
     const preferredLatestPath = this.normalizePath(this.siteInfo?.firmwareLatestPath ?? '/firmware/latest');
@@ -105,7 +103,7 @@ export class VersionsComponent implements OnInit {
   private async loadFirmwareInfo(startPath: string): Promise<{ path: string; info: VersionInfo } | null> {
     const candidates = this.firmwareMetadataCandidates(startPath);
     for (const candidate of candidates) {
-      const info = await this.readJson(`${candidate}/version.json`);
+      const info = await this.readFirmwareJson(`${candidate}/version.json`);
       if (info) {
         return { path: candidate, info };
       }
@@ -128,20 +126,22 @@ export class VersionsComponent implements OnInit {
     return [...new Set(candidates)];
   }
 
-  private async readJson(path: string): Promise<VersionInfo | null> {
+  private async readSiteJson(path: string): Promise<VersionInfo | null> {
     try {
-      const proxyUrl = this.proxy.getProxyUrl();
-      let url: string;
-      
-      if (proxyUrl) {
-        // Route through proxy to avoid CORS issues
-        const externalUrl = `${VersionsComponent.FIRMWARE_BASE_URL}${path}`;
-        url = `${proxyUrl}/proxy?url=${encodeURIComponent(externalUrl)}&t=${Date.now()}`;
-      } else {
-        // Same-origin (served directly from ESP32), use relative path
-        url = `${path}?t=${Date.now()}`;
-      }
-      
+      const url = `${path}?t=${Date.now()}`;
+
+      const result = await firstValueFrom(this.http.get<VersionInfo>(url));
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
+  private async readFirmwareJson(path: string): Promise<VersionInfo | null> {
+    try {
+      const externalUrl = `${VersionsComponent.FIRMWARE_BASE_URL}${path}`;
+      const url = `${externalUrl}?t=${Date.now()}`;
+
       const result = await firstValueFrom(this.http.get<VersionInfo>(url));
       return result;
     } catch {

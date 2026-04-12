@@ -184,6 +184,9 @@ export class RokuService {
     const sequence: string[] = [
       'Home',      // Step 1: Guarantee starting point (dashboard)
       'long-delay',
+      'Home',
+      'Home',
+      'short-delay',
       'Left',      // Step 2: Move focus to left menu
       'short-delay',
       'Up', 'short-delay',

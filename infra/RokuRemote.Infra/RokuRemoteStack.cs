@@ -30,6 +30,21 @@ public class RokuRemoteStack : Stack
             domainNames = new[] { config.DomainName };
         }
 
+        var firmwareCorsPolicy = new ResponseHeadersPolicy(this, "FirmwareCorsPolicy", new ResponseHeadersPolicyProps
+        {
+            Comment = "Allow cross-origin firmware metadata fetches from ESP32-hosted web UI",
+            CorsBehavior = new ResponseHeadersCorsBehavior
+            {
+                AccessControlAllowCredentials = false,
+                AccessControlAllowHeaders = new[] { "*" },
+                AccessControlAllowMethods = new[] { "GET", "HEAD", "OPTIONS" },
+                AccessControlAllowOrigins = new[] { "*" },
+                AccessControlExposeHeaders = new[] { "ETag", "Content-Length", "Content-Type" },
+                AccessControlMaxAge = Duration.Seconds(86400),
+                OriginOverride = true
+            }
+        });
+
         var distribution = new Distribution(this, "SiteDistribution", new DistributionProps
         {
             DefaultBehavior = new BehaviorOptions
@@ -44,7 +59,9 @@ public class RokuRemoteStack : Stack
                 {
                     Origin = S3BucketOrigin.WithOriginAccessControl(bucket),
                     ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    CachePolicy = CachePolicy.CACHING_DISABLED
+                    CachePolicy = CachePolicy.CACHING_DISABLED,
+                    AllowedMethods = AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+                    ResponseHeadersPolicy = firmwareCorsPolicy
                 }
             },
             DefaultRootObject = "index.html",
