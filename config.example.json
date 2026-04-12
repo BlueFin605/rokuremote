@@ -1,9 +1,9 @@
 {
   "rokuremote": {
     "prefix": "rokuremote",
-    "region": "ap-southeast-2",
+    "region": "us-east-1",
     "environment": "production",
-    "domain": "",
+    "domain": "example.com",
     "certificateArnUsEast1": ""
   }
 }
