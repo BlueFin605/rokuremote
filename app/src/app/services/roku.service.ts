@@ -187,24 +187,14 @@ export class RokuService {
       'Home',
       'Home',
       'short-delay',
-      'Left',      // Step 2: Move focus to left menu
-      'short-delay',
-      'Up', 'short-delay',
-      'Up', 'short-delay',
-      'Up',  // Step 3: Scroll to Settings (adjust count if needed for your Roku OS)
-      'short-delay',
-      'Select',    // Step 4: Enter Settings
-      'short-delay',
-      'Up',        // Step 5: Navigate to System
-      'short-delay',
-      'Select',    // Step 6: Enter System
-      'short-delay',
-      'Down', 'short-delay',
-      'Down',  // Step 7: Navigate to System restart (may need adjustment)
-      'short-delay',
-      'Select',    // Step 8: Enter restart prompt
-      'short-delay',
-      'Select',    // Step 9: Confirm restart
+      'Up',
+      'Right',
+      'Up',
+      'Right',
+      'Up',
+      'Up',
+      'Right',
+      'Select'    // Step 4: Enter Settings
     ];
 
     for (const key of sequence) {
