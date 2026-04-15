@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
+# For local proxy usage we only connect to ws:// endpoints, so we disable
+# optional TLS/zlib dependencies in ixwebsocket to simplify Windows setup.
+set(USE_TLS OFF CACHE BOOL "" FORCE)
+set(USE_ZLIB OFF CACHE BOOL "" FORCE)
+
 # Header-only HTTP server
 FetchContent_Declare(
   httplib
@@ -29,8 +34,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(httplib ixwebsocket json)
 
-find_package(OpenSSL REQUIRED)
-
 add_executable(roku-proxy
   src/main.cpp
   src/roku_auth.cpp
@@ -47,5 +50,8 @@ target_link_libraries(roku-proxy PRIVATE
   httplib::httplib
   ixwebsocket
   nlohmann_json::nlohmann_json
-  OpenSSL::Crypto
 )
+
+if (WIN32)
+  target_link_libraries(roku-proxy PRIVATE ws2_32)
+endif()

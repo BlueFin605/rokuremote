@@ -1,35 +1,47 @@
 #include "http_server.h"
+#include "net_compat.h"
 #include <iostream>
 #include <string>
 #include <cstring>
-#include <ifaddrs.h>
-#include <arpa/inet.h>
-#include <net/if.h>
 
 static std::string get_local_ip() {
-    struct ifaddrs* ifaddr;
-    if (getifaddrs(&ifaddr) == -1) {
+    char hostname[256] = {0};
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
         return "127.0.0.1";
     }
 
-    std::string result = "127.0.0.1";
-    for (auto* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
-        if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
-        if (ifa->ifa_flags & IFF_LOOPBACK) continue;
-        if (!(ifa->ifa_flags & IFF_UP)) continue;
+    struct addrinfo hints{};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo* result = nullptr;
+    if (getaddrinfo(hostname, nullptr, &hints, &result) != 0 || !result) {
+        return "127.0.0.1";
+    }
+
+    std::string ip = "127.0.0.1";
+    for (auto* p = result; p != nullptr; p = p->ai_next) {
+        if (!p->ai_addr || p->ai_family != AF_INET) continue;
+
+        auto* sa = reinterpret_cast<sockaddr_in*>(p->ai_addr);
+        if (sa->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) continue;
 
         char buf[INET_ADDRSTRLEN];
-        auto* sa = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr);
         inet_ntop(AF_INET, &sa->sin_addr, buf, sizeof(buf));
-        result = buf;
+        ip = buf;
         break;
     }
 
-    freeifaddrs(ifaddr);
-    return result;
+    freeaddrinfo(result);
+    return ip;
 }
 
 int main(int argc, char* argv[]) {
+    if (!initialize_sockets()) {
+        std::cerr << "Failed to initialize sockets\n";
+        return 1;
+    }
+
     int http_port = 8080;
     int rtp_port = 6970;
 
@@ -53,6 +65,8 @@ int main(int argc, char* argv[]) {
 
     roku::HttpServer server(http_port, local_ip, rtp_port);
     server.start();
+
+    cleanup_sockets();
 
     return 0;
 }

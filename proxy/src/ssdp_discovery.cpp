@@ -1,8 +1,5 @@
 #include "ssdp_discovery.h"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include "net_compat.h"
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -82,14 +79,14 @@ static void fetch_device_info(DiscoveredDevice& device) {
 std::vector<DiscoveredDevice> discover_devices(int timeout_ms) {
     std::vector<DiscoveredDevice> devices;
 
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
+    socket_handle_t sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock == INVALID_SOCKET_HANDLE) {
         std::cerr << "Failed to create SSDP socket\n";
         return devices;
     }
 
     int reuse = 1;
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
 
     struct sockaddr_in dest{};
     dest.sin_family = AF_INET;
@@ -103,7 +100,7 @@ std::vector<DiscoveredDevice> discover_devices(int timeout_ms) {
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
     tv.tv_usec = (timeout_ms % 1000) * 1000;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&tv), sizeof(tv));
 
     char buf[2048];
     std::set<std::string> seen_ips;
@@ -125,7 +122,7 @@ std::vector<DiscoveredDevice> discover_devices(int timeout_ms) {
         }
     }
 
-    close(sock);
+    close_socket(sock);
     return devices;
 }
 

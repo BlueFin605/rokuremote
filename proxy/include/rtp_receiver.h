@@ -5,6 +5,7 @@
 #include <atomic>
 #include <thread>
 #include <string>
+#include "net_compat.h"
 
 namespace roku {
 
@@ -27,8 +28,8 @@ public:
 
 private:
     int port_;
-    int socket_fd_ = -1;
-    int rtcp_fd_ = -1;
+    socket_handle_t socket_fd_ = INVALID_SOCKET_HANDLE;
+    socket_handle_t rtcp_fd_ = INVALID_SOCKET_HANDLE;
     std::atomic<bool> running_{false};
     std::thread recv_thread_;
     std::thread rtcp_thread_;

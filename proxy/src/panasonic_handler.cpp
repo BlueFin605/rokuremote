@@ -3,10 +3,7 @@
 #include <iostream>
 #include <sstream>
 #include <regex>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include "net_compat.h"
 #include <set>
 
 namespace tv {
@@ -195,7 +192,7 @@ static std::string extract_ip_from_location(const std::string& location) {
 
 static void fetch_panasonic_device_info(DiscoveredTv& device) {
     // Fetch the device description XML from the TV
-    httplib::Client cli(device.ip, PanasonicHandler::TV_PORT);
+    httplib::Client cli(device.ip, 55000);
     cli.set_connection_timeout(2);
     cli.set_read_timeout(2);
 
@@ -214,14 +211,14 @@ static void fetch_panasonic_device_info(DiscoveredTv& device) {
 std::vector<DiscoveredTv> PanasonicHandler::discover(int timeout_ms) {
     std::vector<DiscoveredTv> devices;
 
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
+    socket_handle_t sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock == INVALID_SOCKET_HANDLE) {
         std::cerr << "[panasonic] Failed to create SSDP socket\n";
         return devices;
     }
 
     int reuse = 1;
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse));
 
     struct sockaddr_in dest{};
     dest.sin_family = AF_INET;
@@ -234,7 +231,7 @@ std::vector<DiscoveredTv> PanasonicHandler::discover(int timeout_ms) {
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;
     tv.tv_usec = (timeout_ms % 1000) * 1000;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&tv), sizeof(tv));
 
     char buf[2048];
     std::set<std::string> seen_ips;
@@ -256,7 +253,7 @@ std::vector<DiscoveredTv> PanasonicHandler::discover(int timeout_ms) {
         }
     }
 
-    close(sock);
+    close_socket(sock);
     return devices;
 }
 

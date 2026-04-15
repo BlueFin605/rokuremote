@@ -4,6 +4,9 @@
 Write-Host "Starting RokuRemote Aspire..." -ForegroundColor Cyan
 Write-Host ""
 
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+Push-Location $scriptRoot
+
 # Check the proxy is built
 if (-not (Test-Path "proxy/build")) {
     Write-Host "X Proxy not built. Run ./setup-aspire.ps1 first." -ForegroundColor Red
@@ -12,8 +15,11 @@ if (-not (Test-Path "proxy/build")) {
 
 # Set environment variables for Aspire
 $env:ASPIRE_ALLOW_UNSECURED_TRANSPORT = "true"
-$env:DOTNET_DASHBOARD_OTLP_ENDPOINT_URL = "http://localhost:4317"
-$env:DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL = "http://localhost:4318"
+$env:ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL = "http://localhost:4317"
+$env:ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL = "http://localhost:4318"
+# Compatibility aliases for older Aspire dashboard env var naming
+$env:DOTNET_DASHBOARD_OTLP_ENDPOINT_URL = $env:ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL
+$env:DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL = $env:ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL
 $env:ASPNETCORE_URLS = "http://localhost:15888"
 
 Write-Host "Starting Aspire AppHost..." -ForegroundColor Yellow
@@ -24,4 +30,15 @@ Write-Host "  - Angular dev server on port 4200" -ForegroundColor Gray
 Write-Host ""
 
 # Start Aspire
-dotnet run --project aspire\RokuRemote.AppHost\RokuRemote.AppHost.csproj
+$env:Path = "$env:USERPROFILE\.dotnet\tools;" + $env:Path
+$aspireCli = Get-Command aspire -ErrorAction SilentlyContinue
+$appHostProject = Join-Path $scriptRoot "aspire\RokuRemote.AppHost\RokuRemote.AppHost.csproj"
+
+if ($aspireCli) {
+    aspire run --apphost $appHostProject --non-interactive
+} else {
+    Write-Host "Aspire CLI not found, falling back to dotnet run..." -ForegroundColor Yellow
+    dotnet run --project $appHostProject
+}
+
+Pop-Location

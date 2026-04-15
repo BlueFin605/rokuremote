@@ -10,7 +10,7 @@ CDK stack that deploys a CloudFront distribution backed by an S3 bucket for host
 
 ## Prerequisites
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/v2/guide/cli.html) (`npm install -g aws-cdk`)
 - AWS credentials configured (via `aws configure`, environment variables, or SSO)
 

@@ -111,9 +111,7 @@ export class TvService {
       ]).pipe(delay(TvService.MOCK_DELAY_MS));
     }
 
-    const base = this.proxy.getProxyUrl()
-      ? `${this.proxy.getProxyUrl()}/api`
-      : '/api';
+    const base = this.proxy.getApiBase();
     const tvType = type ?? this.tvType;
     return this.http.get<DiscoveredTv[]>(
       `${base}/tv/discover?type=${tvType}`
@@ -123,9 +121,7 @@ export class TvService {
   }
 
   private tvUrl(path: string): string {
-    const base = this.proxy.getProxyUrl()
-      ? `${this.proxy.getProxyUrl()}/api`
-      : '/api';
+    const base = this.proxy.getApiBase();
     return `${base}/tv/${path}?ip=${this.tvIp}&type=${this.tvType}`;
   }
 

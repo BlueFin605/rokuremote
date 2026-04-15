@@ -57,8 +57,7 @@ export class RokuService {
   private longDelayMs = RokuService.LONG_DELAY_MS;
 
   private rokuUrl(path: string, ip?: string): string {
-    const proxyUrl = this.proxy.getProxyUrl();
-    const base = proxyUrl ? `${proxyUrl}/api` : '/api';
+    const base = this.proxy.getApiBase();
     return `${base}/roku/${path}?ip=${ip ?? this.rokuIp}`;
   }
 

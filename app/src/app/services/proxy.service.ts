@@ -49,7 +49,35 @@ export class ProxyService {
   }
 
   private apiBase(): string {
-    return this.proxyUrl ? `${this.proxyUrl}/api` : '/api';
+    if (!this.proxyUrl) {
+      return '/api';
+    }
+
+    if (this.shouldUseApiPrefix(this.proxyUrl)) {
+      return `${this.proxyUrl}/api`;
+    }
+
+    return this.proxyUrl;
+  }
+
+  private shouldUseApiPrefix(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+
+      // Desktop Aspire/C++ proxy exposes routes at root (/roku, /status, ...).
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return false;
+      }
+    } catch {
+      // If URL parsing fails, fall back to the long-standing /api behavior.
+    }
+
+    return true;
+  }
+
+  getApiBase(): string {
+    return this.apiBase();
   }
 
   getProxyUrl(): string {
