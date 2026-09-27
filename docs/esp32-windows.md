@@ -33,7 +33,7 @@ The default port in `esp32-tool.ps1` is `COM4`. If yours differs, pass `-Port CO
 
 ## Download firmware
 
-Download the `roku-proxy-esp32` artifact from the latest [Actions build](https://github.com/deanmitchell/RokuRemote/actions) and extract it to `%USERPROFILE%\Downloads\roku-proxy-esp32`. The expected structure:
+Download the `roku-proxy-esp32` artifact from the latest [Actions build](https://github.com/BlueFin605/rokuremote/actions) and extract it to `%USERPROFILE%\Downloads\roku-proxy-esp32`. The expected structure:
 
 ```
 roku-proxy-esp32/
@@ -50,6 +50,11 @@ roku-proxy-esp32/
 .\esp32-tool.ps1 monitor                      # monitor only
 .\esp32-tool.ps1 flash -Port COM5             # custom port
 .\esp32-tool.ps1 flash -FirmwarePath C:\path  # custom firmware path
+.\esp32-tool.ps1 ports                        # list available COM ports
+.\esp32-tool.ps1 flash-url -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest        # download + flash
+.\esp32-tool.ps1 flash-monitor-url -FirmwareUrlBase https://roku.yourdomain.com/firmware/latest # download + flash + monitor
+.\esp32-tool.ps1 flash -Chip esp32 -Port COM3 # classic ESP32 instead of the default ESP32-S3
+.\esp32-tool.ps1 full-reset -Port COM5        # erase everything (firmware + Wi-Fi credentials); reflash afterwards
 ```
 
 ## Serial monitor

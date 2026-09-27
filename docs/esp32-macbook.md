@@ -127,7 +127,14 @@ Use the `esp32-tool.sh` script to flash and monitor:
 ./esp32-tool.sh monitor                                # monitor only
 ./esp32-tool.sh flash-monitor /dev/cu.SLAB_USBtoUART   # custom port
 ./esp32-tool.sh flash-monitor /dev/cu.SLAB_USBtoUART ~/Downloads/roku-proxy-esp32  # custom firmware path
+./esp32-tool.sh ports                                  # list available serial ports
+./esp32-tool.sh flash-url --firmware-url-base https://roku.yourdomain.com/firmware/latest        # download + flash
+./esp32-tool.sh flash-monitor-url --firmware-url-base https://roku.yourdomain.com/firmware/latest # download + flash + monitor
+./esp32-tool.sh flash -c esp32 -p /dev/cu.SLAB_USBtoUART  # classic ESP32 instead of the default ESP32-S3
+./esp32-tool.sh full-reset -p /dev/cu.SLAB_USBtoUART      # erase everything (firmware + Wi-Fi credentials); reflash afterwards
 ```
+
+Full flag reference (`-p`/`--port`, `-c`/`--chip`, `--firmware-flavor`, `--firmware-path`, `--firmware-url-base`, offsets, `--auto-select-port`, `--force`): run `./esp32-tool.sh --help` or see `../esp32-tool.sh`'s own usage text.
 
 Note: You can find published ESP32 firmware images and version listings at https://roku.bluefin605.com/versions.
 

@@ -258,34 +258,6 @@ Notes:
 
 ## Infrastructure
 
-The web app is hosted on AWS (S3 + CloudFront). Infrastructure is managed with CDK (C#).
-
-### Configuration
-
-Copy `config.example.json` to `config.json` and fill in your values:
-
-```json
-{
-  "rokuremote": {
-    "prefix": "rokuremote",
-    "region": "ap-southeast-2",
-    "environment": "production",
-    "domain": "roku.yourdomain.com",
-    "certificateArnUsEast1": "arn:aws:acm:us-east-1:..."
-  }
-}
-```
-
-`domain` and `certificateArnUsEast1` are optional — without them, CloudFront serves on its default `*.cloudfront.net` domain.
-
-### Deploy
-
-From the `infra/` directory:
-
-```bash
-cdk bootstrap                                    # first time only
-cdk diff --context configFile=../config.json     # preview changes
-cdk deploy --context configFile=../config.json   # deploy to AWS
-```
-
-See [infra/README.md](infra/README.md) for full CDK details.
+The web app is hosted on AWS (S3 + CloudFront), deployed with CDK (C#).
+Configuration, the deploy commands, and custom-domain setup are covered in
+[infra/README.md](infra/README.md).
