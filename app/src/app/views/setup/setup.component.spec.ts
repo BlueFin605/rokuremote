@@ -28,6 +28,7 @@ describe('SetupComponent', () => {
   afterEach(() => {
     // Flush proxy status check if still pending
     httpMock.match(r => r.url === 'http://roku-proxy/api/status').forEach(r => r.flush('', { status: 0, statusText: '' }));
+    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     httpMock.verify();
   });
 
