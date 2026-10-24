@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -19,6 +19,7 @@ interface VersionInfo {
 @Component({
   selector: 'app-versions',
   templateUrl: './versions.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './versions.component.scss'
 })
 export class VersionsComponent implements OnInit {

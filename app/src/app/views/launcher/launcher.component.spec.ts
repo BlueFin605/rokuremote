@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { LauncherComponent } from './launcher.component';
@@ -23,7 +23,7 @@ describe('LauncherComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [LauncherComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LauncherComponent);

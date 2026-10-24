@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TitleCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -12,6 +12,7 @@ import { DemoModeService } from '../../services/demo-mode.service';
   selector: 'app-audio',
   imports: [FormsModule, TitleCasePipe],
   templateUrl: './audio.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './audio.component.scss'
 })
 export class AudioComponent implements OnInit, OnDestroy {

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -17,6 +17,7 @@ interface BuildVersionInfo {
   selector: 'app-setup',
   imports: [FormsModule],
   templateUrl: './setup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './setup.component.scss'
 })
 export class SetupComponent implements OnInit {

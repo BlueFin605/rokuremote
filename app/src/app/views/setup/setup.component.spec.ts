@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SetupComponent } from './setup.component';
@@ -15,7 +15,7 @@ describe('SetupComponent', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [SetupComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SetupComponent);
