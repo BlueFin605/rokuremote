@@ -152,17 +152,26 @@ describe('RokuService', () => {
 
       const expected = [
         'Home',
-        'Left',
-        'Up', 'Up', 'Up',
-        'Select',
+        'long-delay',
+        'Home',
+        'Home',
+        'short-delay',
         'Up',
-        'Select',
-        'Down', 'Down',
-        'Select',
+        'Right',
+        'Up',
+        'Right',
+        'Up',
+        'Up',
+        'Right',
         'Select',
       ];
 
       for (const key of expected) {
+        if (key === 'long-delay' || key === 'short-delay') {
+          // pseudo keypress: delays the queue, no HTTP request
+          tick(1200);
+          continue;
+        }
         const req = httpMock.expectOne(r =>
           r.url === rokuUrl(`keypress/${key}`, '192.168.1.100') && r.method === 'POST'
         );
