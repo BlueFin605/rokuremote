@@ -41,6 +41,7 @@ export class ProxyService {
     if (typeof window !== 'undefined') {
       const host = window.location.hostname;
       // Same-origin when served from ESP32: mDNS name or local IP on port 80
+      // In the native Capacitor shell the hostname is 'localhost', so this falls through to the http://roku-proxy default.
       if ((host === 'roku-proxy' || host === 'roku-proxy.local' || host.match(/^192\.168\./)) && window.location.port === '') {
         return '';
       }
