@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { SetupComponent } from './setup.component';
 import { RokuService } from '../../services/roku.service';
 import { routes } from '../../app.routes';
@@ -308,5 +309,54 @@ describe('SetupComponent unreachable banner', () => {
     await setup(true, false);
     expect(el().querySelector('[data-testid=unreachable-banner]')).toBeTruthy();
     expect(el().textContent).not.toContain('Switch to another Roku');
+  });
+});
+
+describe('SetupComponent Android app download', () => {
+  let fixture: ComponentFixture<SetupComponent>;
+  let httpMock: HttpTestingController;
+  const apk = 'https://roku.bluefin605.com/android/latest/roku-remote.apk';
+
+  const setup = async (userAgent: string, native = false) => {
+    localStorage.clear();
+    spyOnProperty(navigator, 'userAgent', 'get').and.returnValue(userAgent);
+    spyOn(Capacitor, 'isNativePlatform').and.returnValue(native);
+    await TestBed.configureTestingModule({
+      imports: [SetupComponent],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
+    }).compileComponents();
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(SetupComponent);
+    fixture.detectChanges();
+  };
+
+  const el = () => fixture.nativeElement as HTMLElement;
+
+  afterEach(() => {
+    httpMock.match(r => r.url.includes('/api/status')).forEach(r => r.flush('', { status: 0, statusText: '' }));
+    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
+    localStorage.clear();
+  });
+
+  it('shows the card with the CloudFront apk link on an Android browser, and no footer link', async () => {
+    await setup('Mozilla/5.0 (Linux; Android 14; Pixel 8)');
+    const a = el().querySelector('[data-testid=android-card] a') as HTMLAnchorElement;
+    expect(a).toBeTruthy();
+    expect(a.getAttribute('href')).toBe(apk);
+    expect(el().querySelector('[data-testid=android-link]')).toBeNull();
+  });
+
+  it('shows only the footer link on a desktop browser', async () => {
+    await setup('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120');
+    expect(el().querySelector('[data-testid=android-card]')).toBeNull();
+    const a = el().querySelector('[data-testid=android-link]') as HTMLAnchorElement;
+    expect(a).toBeTruthy();
+    expect(a.getAttribute('href')).toBe(apk);
+  });
+
+  it('shows neither inside the native app', async () => {
+    await setup('Mozilla/5.0 (Linux; Android 14; Pixel 8)', true);
+    expect(el().querySelector('[data-testid=android-card]')).toBeNull();
+    expect(el().querySelector('[data-testid=android-link]')).toBeNull();
   });
 });

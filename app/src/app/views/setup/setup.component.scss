@@ -469,3 +469,40 @@
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
+
+.android-card {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: #f4edff;
+  border: 2px solid #6c2dc7;
+  border-radius: 12px;
+  text-align: center;
+
+  strong {
+    color: #6c2dc7;
+    font-size: 1.1rem;
+  }
+
+  p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+  }
+
+  .hint {
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .android-download {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: #6c2dc7;
+    border-radius: 8px;
+    text-decoration: none;
+  }
+}

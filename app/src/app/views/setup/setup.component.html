@@ -14,6 +14,15 @@
   <h1>RokuRemote</h1>
   <p class="build-meta">GitHub Version: {{ githubVersionLabel() }}</p>
 
+  @if (isAndroidBrowser) {
+    <div class="android-card" data-testid="android-card">
+      <strong>Get the Android app</strong>
+      <p>Installs like any app, remembers your Rokus, and keeps private listening playing with the screen off.</p>
+      <a class="android-download" [href]="androidApkUrl" download="roku-remote.apk">Download for Android</a>
+      <p class="hint">When your phone asks, allow your browser to install apps from this source, then open the downloaded file.</p>
+    </div>
+  }
+
   @if (proxyAvailable) {
     <div class="discover-section">
       <button class="discover-btn" (click)="discoverDevices()" [disabled]="discovering">
@@ -245,4 +254,8 @@
   }
 
   <button class="versions-btn" (click)="openVersions()">Build Versions & Downloads</button>
+
+  @if (!isNativeApp && !isAndroidBrowser) {
+    <p class="hint"><a data-testid="android-link" [href]="androidApkUrl">Android app (APK)</a></p>
+  }
 </div>

@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { SavedRoku } from '../../services/saved-roku';
 import { RokuService, RokuDeviceInfo } from '../../services/roku.service';
@@ -22,6 +23,10 @@ interface BuildVersionInfo {
   styleUrl: './setup.component.scss'
 })
 export class SetupComponent implements OnInit, OnDestroy {
+  readonly androidApkUrl = 'https://roku.bluefin605.com/android/latest/roku-remote.apk';
+  readonly isNativeApp = Capacitor.isNativePlatform();
+  readonly isAndroidBrowser = !Capacitor.isNativePlatform() && /Android/i.test(navigator.userAgent);
+
   ipAddress = '';
   loading = false;
   error: { type: string; message: string } | null = null;
