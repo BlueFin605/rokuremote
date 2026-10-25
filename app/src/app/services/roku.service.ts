@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map, timeout, catchError, throwError, Subject, concatMap, delay, of } from 'rxjs';
 import { ProxyService } from './proxy.service';
 import { DemoModeService } from './demo-mode.service';
+import { SavedRoku, TvType, newId } from './saved-roku';
 
 export interface RokuDeviceInfo {
   name: string;
@@ -34,7 +35,6 @@ export type RokuKey =
   providedIn: 'root'
 })
 export class RokuService {
-  private static readonly STORAGE_KEY = 'roku-ip';
   private static readonly TIMEOUT_MS = 3000;
   private static readonly THROTTLE_MS = 60;
   private static readonly SHORT_DELAY_STORAGE_KEY = 'roku-short-delay-ms';
@@ -45,13 +45,21 @@ export class RokuService {
   private static readonly MAX_DELAY_MS = 5000;
   private static readonly MOCK_DELAY_MS = 180;
 
-  private static readonly ECP_KEY = 'roku-ecp-enabled';
-  private static readonly DEVICE_INFO_KEY = 'roku-device-info';
+  private static readonly ROKUS_KEY = 'rokus';
+  private static readonly ACTIVE_KEY = 'active-roku-id';
 
-  private rokuIp: string | null = null;
+  private _rokus: SavedRoku[] = [];
+  private _activeId: string | null = null;
+  private activeChanged = new Subject<void>();
+  activeChanged$ = this.activeChanged.asObservable();
+  startupVerifiedId: string | null = null;
+
+  get rokus(): readonly SavedRoku[] { return this._rokus; }
+  get activeRoku(): SavedRoku | null { return this._rokus.find(r => r.id === this._activeId) ?? null; }
+  private get rokuIp(): string | null { return this.activeRoku?.ip ?? null; }
+
   private commandQueue = new Subject<{ key: string; action: 'keypress' | 'keydown' | 'keyup' }>();
   private connectionError = new Subject<void>();
-  private _ecpEnabled = true;
   private activeAppId: string | null = null;
   private shortDelayMs = RokuService.SHORT_DELAY_MS;
   private longDelayMs = RokuService.LONG_DELAY_MS;
@@ -64,13 +72,10 @@ export class RokuService {
 
   connectionLost$ = this.connectionError.asObservable();
 
-  get ecpEnabled(): boolean {
-    return this._ecpEnabled;
-  }
+  get ecpEnabled(): boolean { return this.activeRoku?.ecpEnabled ?? true; }
 
   constructor(private http: HttpClient, private proxy: ProxyService, private demoMode: DemoModeService) {
-    this.rokuIp = localStorage.getItem(RokuService.STORAGE_KEY);
-    this._ecpEnabled = localStorage.getItem(RokuService.ECP_KEY) !== 'false';
+    this.loadRokus();
     this.shortDelayMs = this.readDelayMs(RokuService.SHORT_DELAY_STORAGE_KEY, RokuService.SHORT_DELAY_MS);
     this.longDelayMs = this.readDelayMs(RokuService.LONG_DELAY_STORAGE_KEY, RokuService.LONG_DELAY_MS);
     this.initCommandQueue();
@@ -107,11 +112,7 @@ export class RokuService {
         supportsPrivateListening: true,
         ecpEnabled: true,
       };
-      this.rokuIp = ip;
-      this._ecpEnabled = true;
-      localStorage.setItem(RokuService.STORAGE_KEY, ip);
-      localStorage.setItem(RokuService.ECP_KEY, 'true');
-      localStorage.setItem(RokuService.DEVICE_INFO_KEY, JSON.stringify(info));
+      this.saveConnected(ip, info);
       return of(info).pipe(delay(RokuService.MOCK_DELAY_MS));
     }
 
@@ -121,11 +122,7 @@ export class RokuService {
       timeout(RokuService.TIMEOUT_MS),
       map(xml => this.parseDeviceInfo(xml)),
       map(info => {
-        this.rokuIp = ip;
-        this._ecpEnabled = info.ecpEnabled;
-        localStorage.setItem(RokuService.STORAGE_KEY, ip);
-        localStorage.setItem(RokuService.ECP_KEY, String(info.ecpEnabled));
-        localStorage.setItem(RokuService.DEVICE_INFO_KEY, JSON.stringify(info));
+        this.saveConnected(ip, info);
         return info;
       }),
       catchError(err => this.handleError(err))
@@ -133,19 +130,85 @@ export class RokuService {
   }
 
   getCachedDeviceInfo(): RokuDeviceInfo | null {
-    const stored = localStorage.getItem(RokuService.DEVICE_INFO_KEY);
-    if (!stored) return null;
-    try {
-      return JSON.parse(stored) as RokuDeviceInfo;
-    } catch {
-      return null;
-    }
+    return this.activeRoku?.deviceInfo ?? null;
   }
 
   disconnect(): void {
-    this.rokuIp = null;
-    localStorage.removeItem(RokuService.STORAGE_KEY);
-    localStorage.removeItem(RokuService.DEVICE_INFO_KEY);
+    if (this._activeId) this.removeRoku(this._activeId);
+  }
+
+  private loadRokus(): void {
+    const raw = localStorage.getItem(RokuService.ROKUS_KEY);
+    if (raw !== null) {
+      try { this._rokus = JSON.parse(raw) as SavedRoku[]; } catch { this._rokus = []; }
+      const active = localStorage.getItem(RokuService.ACTIVE_KEY);
+      this._activeId = this._rokus.some(r => r.id === active) ? active : (this._rokus[0]?.id ?? null);
+      return;
+    }
+    const legacyIp = localStorage.getItem('roku-ip');
+    if (!legacyIp) return;
+    let info: RokuDeviceInfo | null = null;
+    try { info = JSON.parse(localStorage.getItem('roku-device-info') ?? 'null'); } catch { info = null; }
+    const tvType = (localStorage.getItem('tv-type') as TvType) || 'none';
+    const tvIp = localStorage.getItem('tv-ip');
+    const saved: SavedRoku = {
+      id: newId(), name: info?.name ?? 'Roku', ip: legacyIp,
+      ecpEnabled: localStorage.getItem('roku-ecp-enabled') !== 'false',
+      deviceInfo: info,
+      tv: tvType !== 'none' && tvIp ? { type: tvType, ip: tvIp } : { type: 'none', ip: null },
+    };
+    this._rokus = [saved];
+    this._activeId = saved.id;
+    this.persist();
+    for (const k of ['roku-ip', 'roku-device-info', 'roku-ecp-enabled', 'tv-type', 'tv-ip']) localStorage.removeItem(k);
+  }
+
+  private persist(): void {
+    localStorage.setItem(RokuService.ROKUS_KEY, JSON.stringify(this._rokus));
+    if (this._activeId) localStorage.setItem(RokuService.ACTIVE_KEY, this._activeId);
+    else localStorage.removeItem(RokuService.ACTIVE_KEY);
+  }
+
+  private activate(id: string | null): void {
+    const changed = id !== this._activeId;
+    this._activeId = id;
+    this.persist();
+    if (changed) this.activeChanged.next();
+  }
+
+  private saveConnected(ip: string, info: RokuDeviceInfo): void {
+    const existing = this._rokus.find(r => r.ip === ip);
+    const saved: SavedRoku = {
+      id: existing?.id ?? newId(),
+      name: existing?.name ?? info.name,
+      ip, ecpEnabled: info.ecpEnabled, deviceInfo: info,
+      tv: existing?.tv ?? { type: 'none', ip: null },
+    };
+    this._rokus = existing ? this._rokus.map(r => (r.id === saved.id ? saved : r)) : [...this._rokus, saved];
+    this.activate(saved.id);
+  }
+
+  selectRoku(id: string): void { if (this._rokus.some(r => r.id === id)) this.activate(id); }
+
+  removeRoku(id: string): void {
+    this._rokus = this._rokus.filter(r => r.id !== id);
+    if (id === this._activeId) this.activate(this._rokus[0]?.id ?? null);
+    else this.persist();
+  }
+
+  renameRoku(id: string, name: string): void {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    this._rokus = this._rokus.map(r => (r.id === id ? { ...r, name: trimmed } : r));
+    this.persist();
+  }
+
+  setActiveTv(type: TvType, ip: string | null): void {
+    const active = this.activeRoku;
+    if (!active) return;
+    const tv = type === 'none' || !ip ? { type: 'none' as TvType, ip: null } : { type, ip };
+    this._rokus = this._rokus.map(r => (r.id === active.id ? { ...r, tv } : r));
+    this.persist();
   }
 
   isConnected(): boolean {

@@ -3,6 +3,7 @@ import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SetupComponent } from './setup.component';
+import { RokuService } from '../../services/roku.service';
 import { routes } from '../../app.routes';
 
 describe('SetupComponent', () => {
@@ -93,7 +94,7 @@ describe('SetupComponent', () => {
       <supports-private-listening>false</supports-private-listening>
     </device-info>`);
 
-    expect(localStorage.getItem('roku-ip')).toBe('10.0.0.5');
+    expect(TestBed.inject(RokuService).getSavedIp()).toBe('10.0.0.5');
   });
 
   it('should not connect when IP is empty', () => {

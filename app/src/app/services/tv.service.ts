@@ -4,7 +4,8 @@ import { Observable, Subject, concatMap, delay, of, catchError, timeout, map } f
 import { ProxyService } from './proxy.service';
 import { DemoModeService } from './demo-mode.service';
 
-export type TvType = 'panasonic' | 'none';
+import type { TvType } from './saved-roku';
+export type { TvType } from './saved-roku';
 
 export type TvAction =
   | 'volume_up' | 'volume_down' | 'mute'
