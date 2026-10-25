@@ -3,8 +3,10 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, concatMap, delay, of, catchError, timeout, map } from 'rxjs';
 import { ProxyService } from './proxy.service';
 import { DemoModeService } from './demo-mode.service';
+import { RokuService } from './roku.service';
 
-export type TvType = 'panasonic' | 'none';
+import type { TvType } from './saved-roku';
+export type { TvType } from './saved-roku';
 
 export type TvAction =
   | 'volume_up' | 'volume_down' | 'mute'
@@ -20,50 +22,29 @@ export interface DiscoveredTv {
   providedIn: 'root'
 })
 export class TvService {
-  private static readonly TYPE_KEY = 'tv-type';
-  private static readonly IP_KEY = 'tv-ip';
   private static readonly TIMEOUT_MS = 3000;
   private static readonly THROTTLE_MS = 60;
   private static readonly MOCK_DELAY_MS = 200;
 
-  private tvType: TvType;
-  private tvIp: string | null;
   private commandQueue = new Subject<TvAction>();
   private connectionError = new Subject<void>();
 
   connectionError$ = this.connectionError.asObservable();
 
-  constructor(private http: HttpClient, private proxy: ProxyService, private demoMode: DemoModeService) {
-    this.tvType = (localStorage.getItem(TvService.TYPE_KEY) as TvType) || 'none';
-    this.tvIp = localStorage.getItem(TvService.IP_KEY);
+  constructor(
+    private http: HttpClient,
+    private proxy: ProxyService,
+    private demoMode: DemoModeService,
+    private roku: RokuService,
+  ) {
     this.initCommandQueue();
   }
 
-  get configured(): boolean {
-    return this.tvType !== 'none' && !!this.tvIp;
-  }
+  get configured(): boolean { return this.type !== 'none' && !!this.ip; }
+  get type(): TvType { return this.roku.activeRoku?.tv.type ?? 'none'; }
+  get ip(): string | null { return this.roku.activeRoku?.tv.ip ?? null; }
 
-  get type(): TvType {
-    return this.tvType;
-  }
-
-  get ip(): string | null {
-    return this.tvIp;
-  }
-
-  configure(type: TvType, ip: string | null): void {
-    this.tvType = type;
-    this.tvIp = ip;
-    if (type === 'none' || !ip) {
-      localStorage.removeItem(TvService.TYPE_KEY);
-      localStorage.removeItem(TvService.IP_KEY);
-      this.tvType = 'none';
-      this.tvIp = null;
-    } else {
-      localStorage.setItem(TvService.TYPE_KEY, type);
-      localStorage.setItem(TvService.IP_KEY, ip);
-    }
-  }
+  configure(type: TvType, ip: string | null): void { this.roku.setActiveTv(type, ip); }
 
   command(action: TvAction): void {
     this.commandQueue.next(action);
@@ -102,7 +83,7 @@ export class TvService {
 
   discover(type?: TvType): Observable<DiscoveredTv[]> {
     if (this.demoMode.enabled) {
-      const tvType = type ?? this.tvType;
+      const tvType = type ?? this.type;
       if (tvType === 'none') {
         return of([]).pipe(delay(TvService.MOCK_DELAY_MS));
       }
@@ -114,7 +95,7 @@ export class TvService {
     const base = this.proxy.getProxyUrl()
       ? `${this.proxy.getProxyUrl()}/api`
       : '/api';
-    const tvType = type ?? this.tvType;
+    const tvType = type ?? this.type;
     return this.http.get<DiscoveredTv[]>(
       `${base}/tv/discover?type=${tvType}`
     ).pipe(
@@ -126,7 +107,7 @@ export class TvService {
     const base = this.proxy.getProxyUrl()
       ? `${this.proxy.getProxyUrl()}/api`
       : '/api';
-    return `${base}/tv/${path}?ip=${this.tvIp}&type=${this.tvType}`;
+    return `${base}/tv/${path}?ip=${this.ip}&type=${this.type}`;
   }
 
   private initCommandQueue(): void {

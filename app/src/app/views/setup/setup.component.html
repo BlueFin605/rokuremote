@@ -1,6 +1,27 @@
 <div class="setup">
+  @if (unreachable) {
+    <div class="error unreachable-banner" data-testid="unreachable-banner">
+      <p>Couldn't reach <strong>{{ unreachable.name }}</strong> ({{ unreachable.ip }}).</p>
+      <div class="actions">
+        <button (click)="retryUnreachable()" [disabled]="loading">Retry</button>
+        @if (rokus.length > 1) {
+          <button (click)="dismissUnreachable()">Switch to another Roku</button>
+        }
+      </div>
+    </div>
+  }
+
   <h1>RokuRemote</h1>
   <p class="build-meta">GitHub Version: {{ githubVersionLabel() }}</p>
+
+  @if (isAndroidBrowser) {
+    <div class="android-card" data-testid="android-card">
+      <strong>Get the Android app</strong>
+      <p>Installs like any app, remembers your Rokus, and keeps private listening playing with the screen off.</p>
+      <a class="android-download" [href]="androidApkUrl" download="roku-remote.apk">Download for Android</a>
+      <p class="hint">When your phone asks, allow your browser to install apps from this source, then open the downloaded file.</p>
+    </div>
+  }
 
   @if (proxyAvailable) {
     <div class="discover-section">
@@ -25,6 +46,25 @@
     </div>
   }
 
+  @if (rokus.length > 0) {
+    <div class="roku-list">
+      <h3>Your Rokus</h3>
+      @for (r of rokus; track r.id) {
+        <div class="roku-item" [class.active]="r.id === activeId" [class.unreachable]="r.id === unreachable?.id" [attr.data-testid]="'roku-' + r.id">
+          @if (editingId === r.id) {
+            <input [(ngModel)]="editName" (keydown.enter)="commitRename()" (blur)="commitRename()" />
+          } @else {
+            <span class="roku-name">{{ r.name }} <small>{{ r.ip }}</small></span>
+          }
+          <button (click)="useRoku(r.id)">Use</button>
+          <button (click)="startRename(r)">Rename</button>
+          <button (click)="deleteRoku(r.id)">Delete</button>
+        </div>
+      }
+      <button class="discover-btn" (click)="startAdd()">Add another Roku</button>
+    </div>
+  }
+
   <div class="connect-form">
     <label for="ip">Roku IP Address</label>
     <div class="input-row">
@@ -37,7 +77,7 @@
         [disabled]="loading"
       />
       <button (click)="saveRoku()" [disabled]="loading || !ipAddress.trim()">
-        {{ loading ? 'Saving...' : 'Save' }}
+        {{ loading ? 'Saving...' : 'Save / Add' }}
       </button>
     </div>
     <p class="hint">Find your Roku's IP at: Settings &gt; Network &gt; About</p>
@@ -71,7 +111,7 @@
 
   <div class="tv-section">
     <button class="proxy-toggle" (click)="showTvConfig = !showTvConfig">
-      TV Settings {{ showTvConfig ? '&#9650;' : '&#9660;' }}
+      TV Settings for {{ roku.activeRoku?.name ?? 'Roku' }} {{ showTvConfig ? '&#9650;' : '&#9660;' }}
     </button>
 
     @if (showTvConfig) {
@@ -214,4 +254,8 @@
   }
 
   <button class="versions-btn" (click)="openVersions()">Build Versions & Downloads</button>
+
+  @if (!isNativeApp && !isAndroidBrowser) {
+    <p class="hint"><a data-testid="android-link" [href]="androidApkUrl">Android app (APK)</a></p>
+  }
 </div>

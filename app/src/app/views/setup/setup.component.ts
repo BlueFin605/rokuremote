@@ -1,8 +1,10 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Capacitor } from '@capacitor/core';
+import { firstValueFrom, Subscription } from 'rxjs';
+import { SavedRoku } from '../../services/saved-roku';
 import { RokuService, RokuDeviceInfo } from '../../services/roku.service';
 import { ProxyService, ProxyDevice } from '../../services/proxy.service';
 import { TvService, TvType, DiscoveredTv } from '../../services/tv.service';
@@ -20,7 +22,11 @@ interface BuildVersionInfo {
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './setup.component.scss'
 })
-export class SetupComponent implements OnInit {
+export class SetupComponent implements OnInit, OnDestroy {
+  readonly androidApkUrl = 'https://roku.bluefin605.com/android/latest/roku-remote.apk';
+  readonly isNativeApp = Capacitor.isNativePlatform();
+  readonly isAndroidBrowser = !Capacitor.isNativePlatform() && /Android/i.test(navigator.userAgent);
+
   ipAddress = '';
   loading = false;
   error: { type: string; message: string } | null = null;
@@ -49,8 +55,17 @@ export class SetupComponent implements OnInit {
   discoveredTvs: DiscoveredTv[] = [];
   siteVersion: BuildVersionInfo | null = null;
 
+  formRokuId: string | null = null;
+  editingId: string | null = null;
+  editName = '';
+  unreachable: { id: string; name: string; ip: string; message?: string } | null = null;
+  private activeSub?: Subscription;
+
+  get rokus() { return this.roku.rokus; }
+  get activeId(): string | null { return this.roku.activeRoku?.id ?? null; }
+
   constructor(
-    private roku: RokuService,
+    public roku: RokuService,
     private http: HttpClient,
     public proxy: ProxyService,
     private tv: TvService,
@@ -62,23 +77,63 @@ export class SetupComponent implements OnInit {
     if (typeof window !== 'undefined') {
       this.browserOrigin = window.location.origin;
     }
+    this.unreachable = this.router.getCurrentNavigation()?.extras.state?.['unreachable'] ?? null;
+    // Make the next /apps or /remote navigation re-run the startup reachability check.
+    if (this.unreachable) this.roku.startupVerifiedId = null;
   }
 
   ngOnInit(): void {
     void this.loadSiteVersion();
     this.loadRebootDelaySettings();
 
-    const savedIp = this.roku.getSavedIp();
-    if (savedIp) {
-      this.ipAddress = savedIp;
-      // Show cached connection state without re-verifying
-      this.deviceInfo = this.roku.getCachedDeviceInfo();
-    }
+    this.syncFromActive();
+    this.activeSub = this.roku.activeChanged$.subscribe(() => this.syncFromActive());
 
     // Check if proxy is available for auto-discovery
     this.proxy.isAvailable().subscribe(available => {
       this.proxyAvailable = available;
     });
+  }
+
+  ngOnDestroy(): void {
+    this.activeSub?.unsubscribe();
+  }
+
+  useRoku(id: string): void { this.unreachable = null; this.roku.selectRoku(id); this.close(); }
+
+  retryUnreachable(): void {
+    if (!this.unreachable) return;
+    this.loading = true;
+    this.error = null;
+    this.roku.connect(this.unreachable.ip).subscribe({
+      next: () => { this.loading = false; this.unreachable = null; this.close(); },
+      error: (err) => { this.loading = false; this.error = err; },
+    });
+  }
+  dismissUnreachable(): void { this.unreachable = null; }
+  deleteRoku(id: string): void {
+    const wasActive = id === this.roku.activeRoku?.id;
+    if (this.unreachable?.id === id) this.unreachable = null;
+    this.roku.removeRoku(id);
+    if (wasActive) this.syncFromActive();
+  }
+  startRename(r: SavedRoku): void { this.editingId = r.id; this.editName = r.name; }
+  commitRename(): void {
+    if (this.editingId) this.roku.renameRoku(this.editingId, this.editName);
+    this.editingId = null;
+  }
+  startAdd(): void { this.formRokuId = null; this.ipAddress = ''; this.deviceInfo = null; this.error = null; }
+
+  private syncFromActive(): void {
+    this.formRokuId = this.roku.activeRoku?.id ?? null;
+    this.ipAddress = this.roku.getSavedIp() ?? '';
+    this.deviceInfo = this.roku.getCachedDeviceInfo();
+    this.tvType = this.tv.type;
+    this.tvIpAddress = this.tv.ip ?? '';
+    this.tvSuccess = false;
+    this.tvError = null;
+    this.tvPairingRequired = false;
+    this.discoveredTvs = [];
   }
 
   saveRoku(): void {
@@ -88,8 +143,10 @@ export class SetupComponent implements OnInit {
     this.error = null;
     this.deviceInfo = null;
 
-    this.roku.connect(this.ipAddress.trim()).subscribe({
+    this.roku.connect(this.ipAddress.trim(), { replaceId: this.formRokuId ?? undefined }).subscribe({
       next: (info) => {
+        this.unreachable = null;
+        this.formRokuId = this.roku.activeRoku?.id ?? null;
         this.deviceInfo = info;
         this.loading = false;
       },

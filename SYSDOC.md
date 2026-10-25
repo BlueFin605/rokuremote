@@ -9,6 +9,7 @@ audio.
 ## Tech stack
 
 - **Frontend:** Angular, served from S3 + CloudFront.
+- **Android app:** Capacitor 8 (Android) wrapper around the Angular app.
 - **Proxy:** C++17 (CMake build) — CORS gateway, SSDP discovery, private
   listening audio (Opus over RTP). Same source also builds as ESP32
   firmware (ESP-IDF v5.x) for a dedicated always-on device.
@@ -17,9 +18,25 @@ audio.
   together with one dashboard.
 - **Infra:** AWS CDK (C#) — S3 + CloudFront, optional custom domain via ACM.
 
+## Behaviour worth knowing
+
+The app stores several Rokus (each with an optional TV config), switches
+between them from a header dropdown, and opens straight to the apps screen
+(or the remote when ECP is limited). If the active Roku is unreachable, setup
+opens with a "Couldn't reach <name> (<ip>)" banner.
+
 ## Where things are
 
 - `app/` — Angular web app (the browser UI).
+- `app/android/` — Capacitor Android project (`com.bluefin605.rokuremote`)
+  that wraps the Angular app. It exists because Chrome on Android only
+  installs PWAs from HTTPS and the proxy is plain HTTP. Config is
+  `app/capacitor.config.ts`; private listening runs as a foreground service
+  (`app/src/app/services/native-background.service.ts`). The signed APK is
+  built by the `build-android` job in Home's `deploy-rokuremote.yml` and
+  published to `/android/latest/roku-remote.apk` on the site (S3 +
+  CloudFront); the setup screen links to it. PR/push CI
+  (`.github/workflows/build.yml`) builds a debug APK artifact.
 - `proxy/` — C++ desktop proxy; shared source for the ESP32 build.
 - `esp32/` — ESP-IDF project that builds the same proxy for an ESP32
   microcontroller (`esp32-tool.ps1` in the repo root flashes it).

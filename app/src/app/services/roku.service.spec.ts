@@ -64,7 +64,7 @@ describe('RokuService', () => {
 
     it('should save IP to localStorage on success', (done) => {
       service.connect('192.168.1.100').subscribe(() => {
-        expect(localStorage.getItem('roku-ip')).toBe('192.168.1.100');
+        expect(service.getSavedIp()).toBe('192.168.1.100');
         expect(service.isConnected()).toBe(true);
         done();
       });
@@ -103,11 +103,154 @@ describe('RokuService', () => {
 
   describe('disconnect', () => {
     it('should clear saved IP and mark as disconnected', () => {
-      localStorage.setItem('roku-ip', '192.168.1.100');
+      connectService();
       service.disconnect();
       expect(service.isConnected()).toBe(false);
       expect(service.getSavedIp()).toBeNull();
-      expect(localStorage.getItem('roku-ip')).toBeNull();
+      expect(service.rokus.length).toBe(0);
+    });
+  });
+
+  function createService(): RokuService {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(withXhr()), provideHttpClientTesting()] });
+    httpMock = TestBed.inject(HttpTestingController);
+    return TestBed.inject(RokuService);
+  }
+
+  describe('saved Roku list', () => {
+    it('migrates legacy single-Roku keys into one active entry and removes them', () => {
+      localStorage.setItem('roku-ip', '192.168.1.50');
+      localStorage.setItem('roku-device-info', JSON.stringify({ name: 'Lounge', model: 'Ultra', supportsPrivateListening: true, ecpEnabled: true }));
+      localStorage.setItem('roku-ecp-enabled', 'true');
+      localStorage.setItem('tv-type', 'panasonic');
+      localStorage.setItem('tv-ip', '192.168.1.90');
+      const s = createService();
+      expect(s.rokus.length).toBe(1);
+      expect(s.activeRoku).toEqual(jasmine.objectContaining({ name: 'Lounge', ip: '192.168.1.50', ecpEnabled: true, tv: { type: 'panasonic', ip: '192.168.1.90' } }));
+      expect(s.getSavedIp()).toBe('192.168.1.50');
+      for (const k of ['roku-ip', 'roku-device-info', 'roku-ecp-enabled', 'tv-type', 'tv-ip']) expect(localStorage.getItem(k)).toBeNull();
+    });
+    it('treats a non-array stored list as empty and drops malformed entries', () => {
+      localStorage.setItem('rokus', '{}');
+      expect(createService().rokus.length).toBe(0);
+      localStorage.setItem('rokus', JSON.stringify([null, 5, { id: 'x' }, { id: 'a', ip: '1.2.3.4', name: 'A' }]));
+      const s2 = createService();
+      expect(s2.rokus.map(r => r.id)).toEqual(['a']);
+    });
+    it('starts empty with nothing saved', () => {
+      const s = createService();
+      expect(s.rokus.length).toBe(0);
+      expect(s.activeRoku).toBeNull();
+      expect(s.isConnected()).toBeFalse();
+    });
+    it('connect adds a new Roku, makes it active, and reuses the entry for a known ip', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      expect(s.rokus.map(r => r.ip)).toEqual(['10.0.0.1', '10.0.0.2']);
+      expect(s.activeRoku!.ip).toBe('10.0.0.2');
+      s.connect('10.0.0.1').subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      expect(s.rokus.length).toBe(2);
+      expect(s.activeRoku!.ip).toBe('10.0.0.1');
+    });
+    it('verifyOnly updates the checked entry without changing the active Roku', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      const a = s.rokus[0];
+      s.renameRoku(a.id, 'Custom');
+      s.selectRoku(s.rokus[1].id);
+      const activeId = s.activeRoku!.id;
+      s.connect('10.0.0.1', { replaceId: a.id, verifyOnly: true }).subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      expect(s.activeRoku!.id).toBe(activeId);
+      expect(s.rokus.length).toBe(2);
+      const updated = s.rokus.find(r => r.id === a.id)!;
+      expect(updated.name).toBe('Custom');
+      expect(updated.deviceInfo).not.toBeNull();
+    });
+    it('verifyOnly for a removed entry does not re-add it', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      const a = s.rokus[0];
+      s.connect('10.0.0.1', { replaceId: a.id, verifyOnly: true }).subscribe();
+      s.removeRoku(a.id);
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      expect(s.rokus.map(r => r.ip)).toEqual(['10.0.0.2']);
+      expect(s.activeRoku!.ip).toBe('10.0.0.2');
+    });
+    it('verifyOnly is a no-op when the entry ip was edited while the check was in flight', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      const a = s.rokus[0];
+      s.connect('10.0.0.1', { replaceId: a.id, verifyOnly: true }).subscribe();
+      s.connect('10.0.0.5', { replaceId: a.id }).subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.5')).flush(connectXml);
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1'))
+        .flush('<device-info><friendly-device-name>Stale</friendly-device-name><model-name>Old</model-name></device-info>');
+      const e = s.rokus.find(r => r.id === a.id)!;
+      expect(e.ip).toBe('10.0.0.5');
+      expect(e.deviceInfo!.model).toBe('Test');
+    });
+    it('connect with replaceId updates that entry ip keeping id, name and tv', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.renameRoku(s.activeRoku!.id, 'Custom');
+      s.setActiveTv('panasonic', '10.0.0.9');
+      const before = s.activeRoku!;
+      s.connect('10.0.0.5', { replaceId: before.id }).subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.5')).flush(connectXml);
+      expect(s.rokus.length).toBe(1);
+      expect(s.activeRoku).toEqual(jasmine.objectContaining({ id: before.id, name: 'Custom', ip: '10.0.0.5', tv: { type: 'panasonic', ip: '10.0.0.9' } }));
+    });
+    it('connect with replaceId to an ip that already exists switches to that entry without adding', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      const [a, b] = s.rokus;
+      s.connect('10.0.0.1', { replaceId: b.id }).subscribe();
+      httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      expect(s.rokus.length).toBe(2);
+      expect(s.rokus.find(r => r.id === b.id)!.ip).toBe('10.0.0.2');
+      expect(s.activeRoku!.id).toBe(a.id);
+    });
+    it('selectRoku switches the active Roku, persists it, and emits activeChanged$', () => {
+      const s = createService();
+      let emitted = 0; s.activeChanged$.subscribe(() => emitted++);
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      const first = s.rokus[0];
+      emitted = 0;
+      s.selectRoku(first.id);
+      expect(s.activeRoku!.id).toBe(first.id);
+      expect(emitted).toBe(1);
+      expect(createService().activeRoku!.id).toBe(first.id); // persisted
+    });
+    it('removeRoku of the active Roku falls back to the first remaining; disconnect removes only the active one', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      s.disconnect();
+      expect(s.rokus.map(r => r.ip)).toEqual(['10.0.0.1']);
+      expect(s.activeRoku!.ip).toBe('10.0.0.1');
+      s.disconnect();
+      expect(s.activeRoku).toBeNull();
+    });
+    it('renameRoku and setActiveTv update the active entry and persist', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.renameRoku(s.activeRoku!.id, '  Bedroom ');
+      s.setActiveTv('panasonic', '10.0.0.9');
+      const again = createService();
+      expect(again.activeRoku!.name).toBe('Bedroom');
+      expect(again.activeRoku!.tv).toEqual({ type: 'panasonic', ip: '10.0.0.9' });
+      again.setActiveTv('none', null);
+      expect(again.activeRoku!.tv).toEqual({ type: 'none', ip: null });
     });
   });
 

@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { RokuSwitcherComponent } from '../../components/roku-switcher/roku-switcher.component';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -7,7 +8,7 @@ import { TvService, TvAction } from '../../services/tv.service';
 
 @Component({
   selector: 'app-remote',
-  imports: [FormsModule],
+  imports: [FormsModule, RokuSwitcherComponent],
   templateUrl: './remote.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './remote.component.scss'

@@ -1,4 +1,6 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { RokuSwitcherComponent } from '../../components/roku-switcher/roku-switcher.component';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Router } from '@angular/router';
@@ -6,12 +8,12 @@ import { RokuService, RokuApp } from '../../services/roku.service';
 
 @Component({
   selector: 'app-launcher',
-  imports: [FormsModule, DragDropModule],
+  imports: [FormsModule, DragDropModule, RokuSwitcherComponent],
   templateUrl: './launcher.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './launcher.component.scss'
 })
-export class LauncherComponent implements OnInit {
+export class LauncherComponent implements OnInit, OnDestroy {
   private static readonly ORDER_KEY = 'roku-app-order';
 
   apps: RokuApp[] = [];
@@ -27,8 +29,15 @@ export class LauncherComponent implements OnInit {
     private router: Router,
   ) {}
 
+  private sub?: Subscription;
+
   ngOnInit(): void {
     this.loadApps();
+    this.sub = this.roku.activeChanged$.subscribe(() => this.loadApps());
+  }
+
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
   }
 
   loadApps(): void {

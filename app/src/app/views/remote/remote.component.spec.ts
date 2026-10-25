@@ -11,6 +11,9 @@ describe('RemoteComponent', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
+    // Other specs leave 'rokus' / 'active-roku-id' behind (random spec order); a stale
+    // active Roku would win over the legacy key and change the request URLs.
+    localStorage.clear();
     localStorage.setItem('roku-ip', '192.168.1.100');
     await TestBed.configureTestingModule({
       imports: [RemoteComponent],
@@ -25,6 +28,7 @@ describe('RemoteComponent', () => {
 
   afterEach(() => {
     httpMock.verify();
+    localStorage.clear();
   });
 
   it('should create', () => {
