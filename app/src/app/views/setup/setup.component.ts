@@ -55,6 +55,7 @@ export class SetupComponent implements OnInit, OnDestroy {
   discoveredTvs: DiscoveredTv[] = [];
   siteVersion: BuildVersionInfo | null = null;
 
+  formRokuId: string | null = null;
   editingId: string | null = null;
   editName = '';
   unreachable: { id: string; name: string; ip: string; message?: string } | null = null;
@@ -121,9 +122,10 @@ export class SetupComponent implements OnInit, OnDestroy {
     if (this.editingId) this.roku.renameRoku(this.editingId, this.editName);
     this.editingId = null;
   }
-  startAdd(): void { this.ipAddress = ''; this.deviceInfo = null; this.error = null; }
+  startAdd(): void { this.formRokuId = null; this.ipAddress = ''; this.deviceInfo = null; this.error = null; }
 
   private syncFromActive(): void {
+    this.formRokuId = this.roku.activeRoku?.id ?? null;
     this.ipAddress = this.roku.getSavedIp() ?? '';
     this.deviceInfo = this.roku.getCachedDeviceInfo();
     this.tvType = this.tv.type;
@@ -141,8 +143,10 @@ export class SetupComponent implements OnInit, OnDestroy {
     this.error = null;
     this.deviceInfo = null;
 
-    this.roku.connect(this.ipAddress.trim()).subscribe({
+    this.roku.connect(this.ipAddress.trim(), { replaceId: this.formRokuId ?? undefined }).subscribe({
       next: (info) => {
+        this.unreachable = null;
+        this.formRokuId = this.roku.activeRoku?.id ?? null;
         this.deviceInfo = info;
         this.loading = false;
       },

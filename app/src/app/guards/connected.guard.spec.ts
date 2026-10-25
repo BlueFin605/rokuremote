@@ -68,6 +68,24 @@ describe('connectedGuard', () => {
     expect(extras.state.unreachable.message).toBeDefined();
   });
 
+  it('does not navigate when the check fails after the user switched Rokus', () => {
+    setup(true);
+    const nav = spyOn(router, 'navigate').and.resolveTo(true);
+    run();
+    roku.selectRoku('b2');
+    infoReqs('10.0.0.1')[0].flush('', { status: 500, statusText: 'x' });
+    expect(nav).not.toHaveBeenCalled();
+  });
+
+  it('a late successful check does not flip the active Roku back', () => {
+    setup(true);
+    run();
+    roku.selectRoku('b2');
+    infoReqs('10.0.0.1')[0].flush('<device-info><friendly-device-name>X</friendly-device-name></device-info>');
+    expect(roku.activeRoku!.id).toBe('b2');
+    expect(roku.rokus.length).toBe(2);
+  });
+
   it('verifies the newly selected Roku after switching', () => {
     setup(true);
     run();

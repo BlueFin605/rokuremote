@@ -203,6 +203,40 @@ describe('SetupComponent Roku list', () => {
     expect(component.deviceInfo).toBeNull();
   });
 
+  const infoXml = '<device-info><friendly-device-name>Lounge</friendly-device-name><model-name>Ultra</model-name></device-info>';
+  const infoUrl = (ip: string) => `http://roku-proxy/api/roku/query/device-info?ip=${ip}`;
+
+  it('editing the active Roku ip updates the same entry (id, name, tv kept, no duplicate)', async () => {
+    await setup();
+    component.ipAddress = '10.0.0.77';
+    component.saveRoku();
+    httpMock.expectOne(r => r.url === infoUrl('10.0.0.77')).flush(infoXml);
+    expect(roku.rokus.length).toBe(2);
+    expect(roku.rokus.some(r => r.ip === '10.0.0.1')).toBeFalse();
+    expect(roku.activeRoku).toEqual(jasmine.objectContaining({ id: 'a', name: 'Lounge', ip: '10.0.0.77', tv: { type: 'panasonic', ip: '10.0.0.50' } }));
+  });
+
+  it('after startAdd, saving a new ip adds a second entry', async () => {
+    await setup();
+    component.startAdd();
+    component.ipAddress = '10.0.0.88';
+    component.saveRoku();
+    httpMock.expectOne(r => r.url === infoUrl('10.0.0.88')).flush(infoXml);
+    expect(roku.rokus.length).toBe(3);
+    expect(roku.rokus.find(r => r.id === 'a')!.ip).toBe('10.0.0.1');
+    expect(roku.activeRoku!.ip).toBe('10.0.0.88');
+  });
+
+  it('saving an ip that already exists switches to that entry without adding', async () => {
+    await setup();
+    component.ipAddress = '10.0.0.2';
+    component.saveRoku();
+    httpMock.expectOne(r => r.url === infoUrl('10.0.0.2')).flush(infoXml);
+    expect(roku.rokus.length).toBe(2);
+    expect(roku.rokus.find(r => r.id === 'a')!.ip).toBe('10.0.0.1');
+    expect(roku.activeRoku!.id).toBe('b');
+  });
+
   it('reloads TV config when the active Roku changes', async () => {
     await setup();
     expect(component.tvType).toBe('panasonic');
@@ -287,6 +321,16 @@ describe('SetupComponent unreachable banner', () => {
       .flush('<device-info><friendly-device-name>Lounge</friendly-device-name><model-name>Ultra</model-name></device-info>');
     expect(component.unreachable).toBeNull();
     expect(nav).toHaveBeenCalledWith(['/apps']);
+  });
+
+  it('a successful Save clears the banner', async () => {
+    await setup();
+    expect(component.unreachable).not.toBeNull();
+    component.ipAddress = '10.0.0.1';
+    component.saveRoku();
+    httpMock.expectOne(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=10.0.0.1')
+      .flush('<device-info><friendly-device-name>Lounge</friendly-device-name></device-info>');
+    expect(component.unreachable).toBeNull();
   });
 
   it('retryUnreachable failure keeps the banner and sets error', async () => {

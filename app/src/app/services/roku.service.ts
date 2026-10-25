@@ -19,6 +19,12 @@ export interface RokuApp {
   iconUrl: string;
 }
 
+/** replaceId: the saved Roku being edited/verified. verifyOnly: refresh that entry only; never add or activate. */
+export interface RokuConnectOptions {
+  replaceId?: string;
+  verifyOnly?: boolean;
+}
+
 export interface RebootDelays {
   shortMs: number;
   longMs: number;
@@ -104,7 +110,7 @@ export class RokuService {
     return this.rokuIp;
   }
 
-  connect(ip: string): Observable<RokuDeviceInfo> {
+  connect(ip: string, opts: RokuConnectOptions = {}): Observable<RokuDeviceInfo> {
     if (this.demoMode.enabled) {
       const info: RokuDeviceInfo = {
         name: 'Demo Roku',
@@ -112,7 +118,7 @@ export class RokuService {
         supportsPrivateListening: true,
         ecpEnabled: true,
       };
-      this.saveConnected(ip, info);
+      this.saveConnected(ip, info, opts);
       return of(info).pipe(delay(RokuService.MOCK_DELAY_MS));
     }
 
@@ -122,7 +128,7 @@ export class RokuService {
       timeout(RokuService.TIMEOUT_MS),
       map(xml => this.parseDeviceInfo(xml)),
       map(info => {
-        this.saveConnected(ip, info);
+        this.saveConnected(ip, info, opts);
         return info;
       }),
       catchError(err => this.handleError(err))
@@ -181,8 +187,16 @@ export class RokuService {
     if (changed) this.activeChanged.next();
   }
 
-  private saveConnected(ip: string, info: RokuDeviceInfo): void {
-    const existing = this._rokus.find(r => r.ip === ip);
+  private saveConnected(ip: string, info: RokuDeviceInfo, opts: RokuConnectOptions = {}): void {
+    if (opts.verifyOnly) {
+      const target = this._rokus.find(r => r.id === opts.replaceId);
+      if (!target) return;
+      this._rokus = this._rokus.map(r => (r.id === target.id ? { ...r, ecpEnabled: info.ecpEnabled, deviceInfo: info } : r));
+      this.persist();
+      return;
+    }
+    const sameIp = this._rokus.find(r => r.ip === ip);
+    const existing = sameIp ?? this._rokus.find(r => r.id === opts.replaceId);
     const saved: SavedRoku = {
       id: existing?.id ?? newId(),
       name: existing?.name ?? info.name,

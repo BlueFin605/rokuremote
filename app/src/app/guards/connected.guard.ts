@@ -14,8 +14,9 @@ export const connectedGuard: CanActivateFn = () => {
 
   if (roku.startupVerifiedId !== active.id) {
     roku.startupVerifiedId = active.id;
-    roku.connect(active.ip).subscribe({
+    roku.connect(active.ip, { replaceId: active.id, verifyOnly: true }).subscribe({
       error: (err) => {
+        if (roku.activeRoku?.id !== active.id) return;
         const state: UnreachableState = {
           unreachable: { id: active.id, name: active.name, ip: active.ip, message: err?.message },
         };

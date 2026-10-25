@@ -48,4 +48,38 @@ describe('AudioPlayerService', () => {
     native.stop.and.resolveTo();
     await service.stop();
   });
+
+  describe('stream exit', () => {
+    const streamDone = () => ({
+      body: { getReader: () => ({ read: () => Promise.resolve({ done: true, value: undefined }) }) },
+    }) as unknown as Response;
+    const flush = () => new Promise(r => setTimeout(r, 30));
+
+    it('stops (native.stop, isPlaying false) when the stream ends normally', async () => {
+      (window.fetch as jasmine.Spy).and.resolveTo(streamDone());
+      await service.start('http://example.invalid/audio');
+      native.stop.calls.reset();
+      await flush();
+      expect(native.stop).toHaveBeenCalledTimes(1);
+      expect(service.isPlaying).toBeFalse();
+    });
+
+    it('stops after the retries are exhausted', async () => {
+      (window.fetch as jasmine.Spy).and.rejectWith(new Error('net'));
+      spyOn(console, 'warn'); spyOn(console, 'error');
+      await service.start('http://example.invalid/audio');
+      native.stop.calls.reset();
+      await new Promise(r => setTimeout(r, 3300));
+      expect(native.stop).toHaveBeenCalledTimes(1);
+      expect(service.isPlaying).toBeFalse();
+    }, 10000);
+
+    it('does not trigger another stop on abort', async () => {
+      (window.fetch as jasmine.Spy).and.rejectWith(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      await service.start('http://example.invalid/audio');
+      native.stop.calls.reset();
+      await flush();
+      expect(native.stop).not.toHaveBeenCalled();
+    });
+  });
 });

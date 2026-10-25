@@ -122,7 +122,7 @@ export class AudioPlayerService {
             this.decodeAndPlay(frame);
           }
         }
-        return; // Stream ended normally
+        break; // Stream ended normally
       } catch (e: any) {
         if (e.name === 'AbortError') return;
         if (attempt < maxRetries) {
@@ -132,6 +132,10 @@ export class AudioPlayerService {
         }
         console.error('Audio stream error:', e);
       }
+    }
+    // Stream ended or retries exhausted (not aborted): release the foreground service.
+    if (this._isPlaying) {
+      try { await this.stop(); } catch { /* never escape */ }
     }
   }
 
