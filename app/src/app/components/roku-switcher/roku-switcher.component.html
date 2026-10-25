@@ -1,0 +1,13 @@
+<div class="switcher">
+  <button class="current" (click)="toggle()" [attr.aria-expanded]="open">
+    {{ roku.activeRoku?.name ?? 'No Roku' }} &#9662;
+  </button>
+  @if (open) {
+    <ul class="menu" role="menu">
+      @for (r of roku.rokus; track r.id) {
+        <li role="menuitem" [class.active]="r.id === roku.activeRoku?.id" (click)="select(r.id)">{{ r.name }}</li>
+      }
+      <li role="menuitem" class="manage" (click)="manage()">Manage Rokus</li>
+    </ul>
+  }
+</div>
