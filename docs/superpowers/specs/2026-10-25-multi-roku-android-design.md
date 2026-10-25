@@ -92,6 +92,31 @@ global.
   decoding and playing the stream natively with ExoPlayer inside the service.
   That is a separate, larger change and is not part of this spec.
 
+## 2b. Building and distributing the APK
+
+Goal: installing is one tap from the website, whether the user opens the
+CloudFront site or the UI served by the ESP32.
+
+- **Build:** GitHub Actions. RokuRemote's `build.yml` builds a debug APK on
+  every PR/push as a check. Home's manual `Deploy RokuRemote` workflow gets a
+  `build-android` job that builds a **signed release APK** (version code =
+  run number so updates install over the old app).
+- **Signing:** one long-lived keystore, kept as four repo secrets
+  (`ROKUREMOTE_ANDROID_KEYSTORE_BASE64`, `..._KEYSTORE_PASSWORD`,
+  `..._KEY_ALIAS`, `..._KEY_PASSWORD`). Android only updates in place when
+  every build uses the same key, so Dean backs the keystore up.
+- **Hosting:** the deploy job publishes to the existing S3 + CloudFront site,
+  next to the firmware: `/android/latest/roku-remote.apk` (master), a
+  versioned copy, and `/android/branches/<branch>/…` for other refs. Content
+  type `application/vnd.android.package-archive`, no cache. No CDK change.
+- **Link:** the setup screen shows a "Download for Android" card on Android
+  browsers (and a small footer link elsewhere), hidden inside the native app.
+  The link is the absolute CloudFront URL, because the ESP32 cannot hold a
+  multi-MB APK; the same Angular build is embedded in the ESP32 firmware, so
+  both entry points work.
+- **User steps:** tap download, allow the browser to install from this source
+  once, open the file.
+
 ## 3. Testing
 
 - Unit specs: list migration, active-Roku switching, TV service reading the
