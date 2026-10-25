@@ -50,7 +50,7 @@
     <div class="roku-list">
       <h3>Your Rokus</h3>
       @for (r of rokus; track r.id) {
-        <div class="roku-item" [class.active]="r.id === activeId" [class.unreachable]="r.id === unreachable?.id"[attr.data-testid]="'roku-' + r.id">
+        <div class="roku-item" [class.active]="r.id === activeId" [class.unreachable]="r.id === unreachable?.id" [attr.data-testid]="'roku-' + r.id">
           @if (editingId === r.id) {
             <input [(ngModel)]="editName" (keydown.enter)="commitRename()" (blur)="commitRename()" />
           } @else {

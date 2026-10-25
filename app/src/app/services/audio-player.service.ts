@@ -68,7 +68,6 @@ export class AudioPlayerService {
     this.abortController = null;
 
     this.stopBackgroundAudioSupport();
-    void this.native.stop();
 
     if (this.decoder) {
       this.decoder.free();
@@ -76,9 +75,13 @@ export class AudioPlayerService {
     }
 
     if (this.audioCtx) {
-      await this.audioCtx.close();
+      const ctx = this.audioCtx;
       this.audioCtx = null;
+      await ctx.close();
     }
+
+    // Awaited so a following start() cannot have its foreground service killed by this stop.
+    try { await this.native.stop(); } catch { /* never break stop */ }
   }
 
   private async streamAudio(url: string): Promise<void> {

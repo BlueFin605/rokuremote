@@ -63,11 +63,11 @@ An Android app wraps the web app, because Chrome on Android only installs PWAs f
 2. Allow your browser to install apps from this source when prompted.
 3. Open the downloaded file and install it.
 
-To update, install the new APK over the old one (every build is signed with the same key).
+To update, install the new APK over the old one (every published build is signed with the same key; debug builds use the debug key).
 
 ### Maintainers
 
-- **CI:** the `build-android` job in `.github/workflows/build.yml` builds a debug APK artifact on PRs and pushes. The manual `Deploy RokuRemote` workflow in the Home repo builds the signed release APK (version code = the Actions run number) and publishes it to S3/CloudFront at `/android/latest/roku-remote.apk` (master), `/android/<version>/roku-remote.apk`, and `/android/branches/<branch>/roku-remote.apk` for other refs.
+- **CI:** the `build-android` job in `.github/workflows/build.yml` builds a debug APK artifact on PRs and pushes to master. The manual `Deploy RokuRemote` workflow in the Home repo builds the signed release APK (version code = the Actions run number) and publishes it to S3/CloudFront at `/android/latest/roku-remote.apk` (master), `/android/<version>/roku-remote.apk`, and `/android/branches/<branch>/roku-remote.apk` for other refs.
 - **Signing secrets** (Home repo): `ROKUREMOTE_ANDROID_KEYSTORE_BASE64`, `ROKUREMOTE_ANDROID_KEYSTORE_PASSWORD`, `ROKUREMOTE_ANDROID_KEY_ALIAS`, `ROKUREMOTE_ANDROID_KEY_PASSWORD`. Keep the keystore safe and backed up: Android only updates an installed app in place when every build uses the same key.
 - **Local build (optional):** needs JDK 21 and the Android SDK.
 
@@ -76,6 +76,8 @@ cd app
 npm run android:sync   # production ng build + cap sync android
 npm run android:apk    # sync + debug APK via Gradle
 ```
+
+`npm run android:apk` uses the Windows `gradlew` form. On macOS/Linux, run `npm run android:sync` and then `./gradlew assembleDebug` inside `app/android`.
 
 ## Desktop Proxy
 

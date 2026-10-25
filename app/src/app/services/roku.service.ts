@@ -140,7 +140,12 @@ export class RokuService {
   private loadRokus(): void {
     const raw = localStorage.getItem(RokuService.ROKUS_KEY);
     if (raw !== null) {
-      try { this._rokus = JSON.parse(raw) as SavedRoku[]; } catch { this._rokus = []; }
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        this._rokus = Array.isArray(parsed)
+          ? parsed.filter((r): r is SavedRoku => !!r && typeof r === 'object' && typeof r.id === 'string' && typeof r.ip === 'string')
+          : [];
+      } catch { this._rokus = []; }
       const active = localStorage.getItem(RokuService.ACTIVE_KEY);
       this._activeId = this._rokus.some(r => r.id === active) ? active : (this._rokus[0]?.id ?? null);
       return;

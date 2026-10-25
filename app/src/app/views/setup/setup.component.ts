@@ -110,7 +110,12 @@ export class SetupComponent implements OnInit, OnDestroy {
     });
   }
   dismissUnreachable(): void { this.unreachable = null; }
-  deleteRoku(id: string): void { this.roku.removeRoku(id); this.syncFromActive(); }
+  deleteRoku(id: string): void {
+    const wasActive = id === this.roku.activeRoku?.id;
+    if (this.unreachable?.id === id) this.unreachable = null;
+    this.roku.removeRoku(id);
+    if (wasActive) this.syncFromActive();
+  }
   startRename(r: SavedRoku): void { this.editingId = r.id; this.editName = r.name; }
   commitRename(): void {
     if (this.editingId) this.roku.renameRoku(this.editingId, this.editName);

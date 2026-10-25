@@ -131,6 +131,13 @@ describe('RokuService', () => {
       expect(s.getSavedIp()).toBe('192.168.1.50');
       for (const k of ['roku-ip', 'roku-device-info', 'roku-ecp-enabled', 'tv-type', 'tv-ip']) expect(localStorage.getItem(k)).toBeNull();
     });
+    it('treats a non-array stored list as empty and drops malformed entries', () => {
+      localStorage.setItem('rokus', '{}');
+      expect(createService().rokus.length).toBe(0);
+      localStorage.setItem('rokus', JSON.stringify([null, 5, { id: 'x' }, { id: 'a', ip: '1.2.3.4', name: 'A' }]));
+      const s2 = createService();
+      expect(s2.rokus.map(r => r.id)).toEqual(['a']);
+    });
     it('starts empty with nothing saved', () => {
       const s = createService();
       expect(s.rokus.length).toBe(0);

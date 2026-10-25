@@ -79,7 +79,7 @@ Starts the Angular dev server on port 4200, bound to `0.0.0.0` so it's accessibl
 - **From your laptop:** Open `http://localhost:4200`
 - **From your phone:** Open `http://<your-laptop-ip>:4200` (must be on the same Wi-Fi)
 
-On the setup screen, enter `localhost` (from laptop) or your laptop's IP (from phone) as a Roku.
+On the setup screen, add `localhost` (from laptop) or your laptop's IP (from phone) as a Roku.
 
 ---
 

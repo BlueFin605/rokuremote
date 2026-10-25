@@ -171,6 +171,20 @@ describe('SetupComponent Roku list', () => {
     expect(roku.rokus.map(r => r.id)).toEqual(['a']);
   });
 
+  it('deleteRoku of a non-active Roku keeps a half-typed IP', async () => {
+    await setup();
+    component.ipAddress = '10.0.0.9';
+    component.deleteRoku('b');
+    expect(component.ipAddress).toBe('10.0.0.9');
+  });
+
+  it('deleteRoku of the active Roku resyncs the form', async () => {
+    await setup();
+    component.ipAddress = '10.0.0.9';
+    component.deleteRoku('a');
+    expect(component.ipAddress).toBe('10.0.0.2');
+  });
+
   it('startRename + commitRename renames the Roku', async () => {
     await setup();
     component.startRename(roku.rokus[1]);
@@ -295,6 +309,14 @@ describe('SetupComponent unreachable banner', () => {
     expect(el().querySelector('[data-testid=unreachable-banner]')).toBeNull();
   });
 
+  it('deleteRoku of the unreachable Roku clears the banner, of another keeps it', async () => {
+    await setup();
+    component.deleteRoku('b');
+    expect(component.unreachable).not.toBeNull();
+    component.deleteRoku('a');
+    expect(component.unreachable).toBeNull();
+  });
+
   it('useRoku clears the banner', async () => {
     await setup();
     spyOn(router, 'navigate');
@@ -352,6 +374,12 @@ describe('SetupComponent Android app download', () => {
     const a = el().querySelector('[data-testid=android-link]') as HTMLAnchorElement;
     expect(a).toBeTruthy();
     expect(a.getAttribute('href')).toBe(apk);
+  });
+
+  it('shows neither inside the native app even with a desktop user agent', async () => {
+    await setup('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120', true);
+    expect(el().querySelector('[data-testid=android-card]')).toBeNull();
+    expect(el().querySelector('[data-testid=android-link]')).toBeNull();
   });
 
   it('shows neither inside the native app', async () => {
