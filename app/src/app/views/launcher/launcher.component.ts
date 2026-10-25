@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Router } from '@angular/router';
@@ -8,6 +8,7 @@ import { RokuService, RokuApp } from '../../services/roku.service';
   selector: 'app-launcher',
   imports: [FormsModule, DragDropModule],
   templateUrl: './launcher.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './launcher.component.scss'
 })
 export class LauncherComponent implements OnInit {

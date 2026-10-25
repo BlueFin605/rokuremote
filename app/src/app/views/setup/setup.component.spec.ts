@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SetupComponent } from './setup.component';
@@ -15,7 +15,7 @@ describe('SetupComponent', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [SetupComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SetupComponent);
@@ -28,6 +28,7 @@ describe('SetupComponent', () => {
   afterEach(() => {
     // Flush proxy status check if still pending
     httpMock.match(r => r.url === 'http://roku-proxy/api/status').forEach(r => r.flush('', { status: 0, statusText: '' }));
+    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     httpMock.verify();
   });
 
@@ -50,7 +51,7 @@ describe('SetupComponent', () => {
 
   it('should display device info on successful connect', () => {
     component.ipAddress = '192.168.1.100';
-    component.tryConnect();
+    component.saveRoku();
 
     httpMock.expectOne(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=192.168.1.100').flush(`
       <device-info>
@@ -68,7 +69,7 @@ describe('SetupComponent', () => {
 
   it('should show limited mode instructions on 403', () => {
     component.ipAddress = '192.168.1.100';
-    component.tryConnect();
+    component.saveRoku();
 
     httpMock.expectOne(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=192.168.1.100')
       .flush('ECP command not allowed in Limited mode.', { status: 403, statusText: 'Forbidden' });
@@ -83,7 +84,7 @@ describe('SetupComponent', () => {
   it('should auto-connect if IP is saved in localStorage', () => {
     // Set IP and manually trigger the connect flow
     component.ipAddress = '10.0.0.5';
-    component.tryConnect();
+    component.saveRoku();
 
     const req = httpMock.expectOne(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=10.0.0.5');
     req.flush(`<device-info>
@@ -97,7 +98,7 @@ describe('SetupComponent', () => {
 
   it('should not connect when IP is empty', () => {
     component.ipAddress = '   ';
-    component.tryConnect();
+    component.saveRoku();
     httpMock.expectNone(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=192.168.1.100');
   });
 });
