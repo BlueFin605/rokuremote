@@ -16,7 +16,7 @@ The Angular app can't talk to the Roku directly (no CORS), so a proxy sits in be
 
 ```
 RokuRemote/
-├── app/            ← Angular web app
+├── app/            ← Angular web app (+ app/android Capacitor wrapper)
 ├── proxy/          ← C++ desktop proxy
 ├── esp32/          ← ESP32 firmware (same proxy for microcontroller)
 ├── mock/           ← Mock Roku server for testing
@@ -36,7 +36,7 @@ Aspire runs the mock Roku, proxy, and Angular app in one command with a unified 
 ./start-aspire.ps1    # start everything
 ```
 
-Open `http://localhost:4200` and enter `localhost` as the Roku IP.
+Open `http://localhost:4200` and add `localhost` as a Roku. You can save several Rokus and switch between them from the dropdown in the header; the app opens straight to the apps screen on launch.
 
 See [local-development.md](local-development.md) for the full setup guide including manual start, testing scenarios, and ESP32 details.
 
@@ -51,6 +51,30 @@ cd proxy && cmake -B build && cmake --build build && ./build/roku-proxy --port 8
 
 # Terminal 3: Angular app
 cd app && npm ci && ng serve
+```
+
+## Android app
+
+An Android app wraps the web app, because Chrome on Android only installs PWAs from HTTPS and the proxy is plain HTTP. Private listening keeps running in the background with a notification that has a Stop button.
+
+### Install
+
+1. On your Android phone, open the site (or the ESP32-served UI) and tap **Download for Android** on the setup screen, or go straight to `https://roku.bluefin605.com/android/latest/roku-remote.apk`.
+2. Allow your browser to install apps from this source when prompted.
+3. Open the downloaded file and install it.
+
+To update, install the new APK over the old one (every build is signed with the same key).
+
+### Maintainers
+
+- **CI:** the `build-android` job in `.github/workflows/build.yml` builds a debug APK artifact on PRs and pushes. The manual `Deploy RokuRemote` workflow in the Home repo builds the signed release APK (version code = the Actions run number) and publishes it to S3/CloudFront at `/android/latest/roku-remote.apk` (master), `/android/<version>/roku-remote.apk`, and `/android/branches/<branch>/roku-remote.apk` for other refs.
+- **Signing secrets** (Home repo): `ROKUREMOTE_ANDROID_KEYSTORE_BASE64`, `ROKUREMOTE_ANDROID_KEYSTORE_PASSWORD`, `ROKUREMOTE_ANDROID_KEY_ALIAS`, `ROKUREMOTE_ANDROID_KEY_PASSWORD`. Keep the keystore safe and backed up: Android only updates an installed app in place when every build uses the same key.
+- **Local build (optional):** needs JDK 21 and the Android SDK.
+
+```bash
+cd app
+npm run android:sync   # production ng build + cap sync android
+npm run android:apk    # sync + debug APK via Gradle
 ```
 
 ## Desktop Proxy

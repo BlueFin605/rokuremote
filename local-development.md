@@ -38,7 +38,7 @@ Open the Aspire Dashboard URL shown in the terminal to see logs from all service
 
 ### Connect
 
-On the setup screen, enter `localhost` as the Roku IP. The mock Roku server responds on port 8060, and the proxy forwards requests to it.
+On the setup screen, add `localhost` as a Roku. The mock Roku server responds on port 8060, and the proxy forwards requests to it.
 
 ---
 
@@ -79,7 +79,7 @@ Starts the Angular dev server on port 4200, bound to `0.0.0.0` so it's accessibl
 - **From your laptop:** Open `http://localhost:4200`
 - **From your phone:** Open `http://<your-laptop-ip>:4200` (must be on the same Wi-Fi)
 
-On the setup screen, enter `localhost` (from laptop) or your laptop's IP (from phone) as the Roku IP.
+On the setup screen, enter `localhost` (from laptop) or your laptop's IP (from phone) as a Roku.
 
 ---
 
@@ -109,7 +109,7 @@ In this mode, device-info still works (so the app can detect the error) but all 
 
 ### Real Roku
 
-If you have a real Roku on the same network, enter its IP address on the setup screen instead. The proxy will forward requests to it. No mock needed (but the proxy is still required).
+If you have a real Roku on the same network, add its IP address on the setup screen instead. The proxy will forward requests to it. No mock needed (but the proxy is still required).
 
 ---
 
@@ -230,7 +230,7 @@ This builds (if needed), flashes, and opens the monitor in one command.
 
 ### Using with the Angular App
 
-Once the ESP32 is running, use it exactly like the desktop proxy. On the Angular app's setup screen, enter the Roku's IP. The app talks to the ESP32 proxy instead of the desktop one.
+Once the ESP32 is running, use it exactly like the desktop proxy. On the Angular app's setup screen, add the Roku's IP (you can save several and switch between them). The app talks to the ESP32 proxy instead of the desktop one.
 
 If the Angular app is running via `ng serve` with the default proxy config (`proxy.conf.js`), you'll need to point it at the ESP32's IP instead of localhost. Either:
 
