@@ -201,3 +201,112 @@ describe('SetupComponent Roku list', () => {
     expect(component.tvIpAddress).toBe('10.0.0.50');
   });
 });
+
+describe('SetupComponent unreachable banner', () => {
+  let component: SetupComponent;
+  let fixture: ComponentFixture<SetupComponent>;
+  let httpMock: HttpTestingController;
+  let router: Router;
+  let roku: RokuService;
+
+  const setup = async (withState = true, extraRoku = true) => {
+    localStorage.clear();
+    const list: unknown[] = [
+      { id: 'a', name: 'Lounge', ip: '10.0.0.1', ecpEnabled: true, deviceInfo: null, tv: { type: 'none', ip: null } },
+    ];
+    if (extraRoku) list.push({ id: 'b', name: 'Bedroom', ip: '10.0.0.2', ecpEnabled: true, deviceInfo: null, tv: { type: 'none', ip: null } });
+    localStorage.setItem('rokus', JSON.stringify(list));
+    localStorage.setItem('active-roku-id', 'a');
+    await TestBed.configureTestingModule({
+      imports: [SetupComponent],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
+    }).compileComponents();
+    router = TestBed.inject(Router);
+    roku = TestBed.inject(RokuService);
+    httpMock = TestBed.inject(HttpTestingController);
+    roku.startupVerifiedId = 'a';
+    if (withState) {
+      spyOn(router, 'getCurrentNavigation').and.returnValue({
+        extras: { state: { unreachable: { id: 'a', name: 'Lounge', ip: '10.0.0.1', message: 'Http failure response for http://x: 502' } } },
+      } as any);
+    }
+    fixture = TestBed.createComponent(SetupComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  };
+
+  const el = () => fixture.nativeElement as HTMLElement;
+
+  afterEach(() => {
+    httpMock.match(r => r.url.includes('/api/status')).forEach(r => r.flush('', { status: 0, statusText: '' }));
+    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
+    localStorage.clear();
+  });
+
+  it('shows the banner with name and ip only, and marks the list item', async () => {
+    await setup();
+    const banner = el().querySelector('[data-testid=unreachable-banner]')!;
+    expect(banner).toBeTruthy();
+    expect(banner.textContent).toContain("Couldn't reach Lounge (10.0.0.1)");
+    expect(banner.textContent).not.toContain('Http failure');
+    expect(el().querySelector('[data-testid=roku-a]')!.classList.contains('unreachable')).toBeTrue();
+    expect(el().querySelector('[data-testid=roku-b]')!.classList.contains('unreachable')).toBeFalse();
+  });
+
+  it('clears startupVerifiedId so the next navigation re-checks', async () => {
+    await setup();
+    expect(roku.startupVerifiedId).toBeNull();
+  });
+
+  it('shows no banner without navigation state and leaves startupVerifiedId alone', async () => {
+    await setup(false);
+    expect(el().querySelector('[data-testid=unreachable-banner]')).toBeNull();
+    expect(roku.startupVerifiedId).toBe('a');
+  });
+
+  it('retryUnreachable success clears the banner and navigates to /apps', async () => {
+    await setup();
+    const nav = spyOn(router, 'navigate');
+    component.retryUnreachable();
+    httpMock.expectOne(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=10.0.0.1')
+      .flush('<device-info><friendly-device-name>Lounge</friendly-device-name><model-name>Ultra</model-name></device-info>');
+    expect(component.unreachable).toBeNull();
+    expect(nav).toHaveBeenCalledWith(['/apps']);
+  });
+
+  it('retryUnreachable failure keeps the banner and sets error', async () => {
+    await setup();
+    const nav = spyOn(router, 'navigate');
+    component.retryUnreachable();
+    httpMock.expectOne(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=10.0.0.1')
+      .flush('nope', { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    expect(component.unreachable).not.toBeNull();
+    expect(component.error).toBeTruthy();
+    expect(nav).not.toHaveBeenCalled();
+    expect(el().querySelector('[data-testid=unreachable-banner]')).toBeTruthy();
+  });
+
+  it('dismissUnreachable clears the banner', async () => {
+    await setup();
+    component.dismissUnreachable();
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid=unreachable-banner]')).toBeNull();
+  });
+
+  it('useRoku clears the banner', async () => {
+    await setup();
+    spyOn(router, 'navigate');
+    component.useRoku('b');
+    expect(component.unreachable).toBeNull();
+  });
+
+  it('only offers "Switch to another Roku" when more than one Roku is saved', async () => {
+    await setup(true, true);
+    expect(el().textContent).toContain('Switch to another Roku');
+    TestBed.resetTestingModule();
+    await setup(true, false);
+    expect(el().querySelector('[data-testid=unreachable-banner]')).toBeTruthy();
+    expect(el().textContent).not.toContain('Switch to another Roku');
+  });
+});

@@ -422,6 +422,10 @@
       border-color: #6c2dc7;
     }
 
+    &.unreachable {
+      border-left: 4px solid #e53935;
+    }
+
     .roku-name {
       flex: 1;
       display: flex;
@@ -458,4 +462,10 @@
     border-radius: 8px;
     cursor: pointer;
   }
+}
+
+.unreachable-banner .actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }

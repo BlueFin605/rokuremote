@@ -52,6 +52,7 @@ export class SetupComponent implements OnInit, OnDestroy {
 
   editingId: string | null = null;
   editName = '';
+  unreachable: { id: string; name: string; ip: string; message?: string } | null = null;
   private activeSub?: Subscription;
 
   get rokus() { return this.roku.rokus; }
@@ -70,6 +71,9 @@ export class SetupComponent implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') {
       this.browserOrigin = window.location.origin;
     }
+    this.unreachable = this.router.getCurrentNavigation()?.extras.state?.['unreachable'] ?? null;
+    // Make the next /apps or /remote navigation re-run the startup reachability check.
+    if (this.unreachable) this.roku.startupVerifiedId = null;
   }
 
   ngOnInit(): void {
@@ -89,7 +93,18 @@ export class SetupComponent implements OnInit, OnDestroy {
     this.activeSub?.unsubscribe();
   }
 
-  useRoku(id: string): void { this.roku.selectRoku(id); this.close(); }
+  useRoku(id: string): void { this.unreachable = null; this.roku.selectRoku(id); this.close(); }
+
+  retryUnreachable(): void {
+    if (!this.unreachable) return;
+    this.loading = true;
+    this.error = null;
+    this.roku.connect(this.unreachable.ip).subscribe({
+      next: () => { this.loading = false; this.unreachable = null; this.close(); },
+      error: (err) => { this.loading = false; this.error = err; },
+    });
+  }
+  dismissUnreachable(): void { this.unreachable = null; }
   deleteRoku(id: string): void { this.roku.removeRoku(id); this.syncFromActive(); }
   startRename(r: SavedRoku): void { this.editingId = r.id; this.editName = r.name; }
   commitRename(): void {
