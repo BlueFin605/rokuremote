@@ -103,3 +103,101 @@ describe('SetupComponent', () => {
     httpMock.expectNone(r => r.url === 'http://roku-proxy/api/roku/query/device-info?ip=192.168.1.100');
   });
 });
+
+describe('SetupComponent Roku list', () => {
+  let component: SetupComponent;
+  let fixture: ComponentFixture<SetupComponent>;
+  let httpMock: HttpTestingController;
+  let router: Router;
+  let roku: RokuService;
+
+  const seed = (bEcp = true) => {
+    localStorage.clear();
+    localStorage.setItem('roku-ip', '10.0.0.1');
+    localStorage.setItem('rokus', JSON.stringify([
+      { id: 'a', name: 'Lounge', ip: '10.0.0.1', ecpEnabled: true, deviceInfo: { name: 'Lounge', model: 'Ultra', supportsPrivateListening: true, ecpEnabled: true }, tv: { type: 'panasonic', ip: '10.0.0.50' } },
+      { id: 'b', name: 'Bedroom', ip: '10.0.0.2', ecpEnabled: bEcp, deviceInfo: null, tv: { type: 'none', ip: null } },
+    ]));
+    localStorage.setItem('active-roku-id', 'a');
+  };
+
+  const setup = async (bEcp = true) => {
+    seed(bEcp);
+    await TestBed.configureTestingModule({
+      imports: [SetupComponent],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
+    }).compileComponents();
+    roku = TestBed.inject(RokuService);
+    router = TestBed.inject(Router);
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(SetupComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  };
+
+  afterEach(() => {
+    httpMock.match(r => r.url.includes('/api/status')).forEach(r => r.flush('', { status: 0, statusText: '' }));
+    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
+    localStorage.clear();
+  });
+
+  it('renders one .roku-item per saved Roku and marks the active one', async () => {
+    await setup();
+    const items = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.roku-item'));
+    expect(items.length).toBe(2);
+    expect(items[0].classList.contains('active')).toBeTrue();
+    expect(items[1].classList.contains('active')).toBeFalse();
+  });
+
+  it('useRoku selects the Roku and navigates to /apps', async () => {
+    await setup();
+    const nav = spyOn(router, 'navigate');
+    component.useRoku('b');
+    expect(roku.activeRoku!.id).toBe('b');
+    expect(nav).toHaveBeenCalledWith(['/apps']);
+  });
+
+  it('useRoku navigates to /remote when the Roku has ECP disabled', async () => {
+    await setup(false);
+    const nav = spyOn(router, 'navigate');
+    component.useRoku('b');
+    expect(nav).toHaveBeenCalledWith(['/remote']);
+  });
+
+  it('deleteRoku removes the Roku', async () => {
+    await setup();
+    component.deleteRoku('b');
+    expect(roku.rokus.map(r => r.id)).toEqual(['a']);
+  });
+
+  it('startRename + commitRename renames the Roku', async () => {
+    await setup();
+    component.startRename(roku.rokus[1]);
+    expect(component.editingId).toBe('b');
+    component.editName = 'Den';
+    component.commitRename();
+    expect(roku.rokus[1].name).toBe('Den');
+    expect(component.editingId).toBeNull();
+  });
+
+  it('startAdd clears the form', async () => {
+    await setup();
+    expect(component.ipAddress).toBe('10.0.0.1');
+    component.startAdd();
+    expect(component.ipAddress).toBe('');
+    expect(component.deviceInfo).toBeNull();
+  });
+
+  it('reloads TV config when the active Roku changes', async () => {
+    await setup();
+    expect(component.tvType).toBe('panasonic');
+    expect(component.tvIpAddress).toBe('10.0.0.50');
+    roku.selectRoku('b');
+    expect(component.tvType).toBe('none');
+    expect(component.tvIpAddress).toBe('');
+    expect(component.ipAddress).toBe('10.0.0.2');
+    roku.selectRoku('a');
+    expect(component.tvType).toBe('panasonic');
+    expect(component.tvIpAddress).toBe('10.0.0.50');
+  });
+});
