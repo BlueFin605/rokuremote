@@ -77,6 +77,17 @@ describe('connectedGuard', () => {
     expect(nav).not.toHaveBeenCalled();
   });
 
+  it('does not navigate when the check fails after the active Roku ip was edited', () => {
+    setup(true);
+    const nav = spyOn(router, 'navigate').and.resolveTo(true);
+    run();
+    roku.connect('10.0.0.9', { replaceId: 'a1' }).subscribe();
+    infoReqs('10.0.0.9')[0].flush('<device-info></device-info>');
+    expect(roku.activeRoku!.ip).toBe('10.0.0.9');
+    infoReqs('10.0.0.1')[0].flush('', { status: 500, statusText: 'x' });
+    expect(nav).not.toHaveBeenCalled();
+  });
+
   it('a late successful check does not flip the active Roku back', () => {
     setup(true);
     run();

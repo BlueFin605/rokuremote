@@ -190,7 +190,7 @@ export class RokuService {
   private saveConnected(ip: string, info: RokuDeviceInfo, opts: RokuConnectOptions = {}): void {
     if (opts.verifyOnly) {
       const target = this._rokus.find(r => r.id === opts.replaceId);
-      if (!target) return;
+      if (!target || target.ip !== ip) return;
       this._rokus = this._rokus.map(r => (r.id === target.id ? { ...r, ecpEnabled: info.ecpEnabled, deviceInfo: info } : r));
       this.persist();
       return;

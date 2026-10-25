@@ -87,16 +87,21 @@ export class AudioPlayerService {
   private async streamAudio(url: string): Promise<void> {
     const maxRetries = 3;
     const retryDelay = 1000;
+    // Identity of THIS session: a stale loop must never act on a newer session.
+    const ac = this.abortController;
+    if (!ac) return;
+    const isCurrent = () => this.abortController === ac && !ac.signal.aborted && this._isPlaying;
 
-    for (let attempt = 0; attempt <= maxRetries && this._isPlaying; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries && isCurrent(); attempt++) {
       try {
-        const response = await fetch(url, { signal: this.abortController!.signal });
+        const response = await fetch(url, { signal: ac.signal });
         const reader = response.body!.getReader();
         let buffer = new Uint8Array(0);
 
-        while (this._isPlaying) {
+        while (isCurrent()) {
           const { done, value } = await reader.read();
           if (done) break;
+          if (!isCurrent()) return;
 
           // Append new data to buffer
           const newBuf = new Uint8Array(buffer.length + value.length);
@@ -119,6 +124,7 @@ export class AudioPlayerService {
             const frame = buffer.slice(2, 2 + frameLen);
             buffer = buffer.slice(2 + frameLen);
 
+            if (!isCurrent()) return;
             this.decodeAndPlay(frame);
           }
         }
@@ -128,13 +134,14 @@ export class AudioPlayerService {
         if (attempt < maxRetries) {
           console.warn(`Audio stream attempt ${attempt + 1} failed, retrying...`);
           await new Promise(resolve => setTimeout(resolve, retryDelay));
+          if (!isCurrent()) return;
           continue;
         }
         console.error('Audio stream error:', e);
       }
     }
     // Stream ended or retries exhausted (not aborted): release the foreground service.
-    if (this._isPlaying) {
+    if (isCurrent()) {
       try { await this.stop(); } catch { /* never escape */ }
     }
   }
