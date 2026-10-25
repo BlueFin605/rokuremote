@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+﻿import { test, expect, Page } from '@playwright/test';
 
 // The app talks to the Roku through the proxy (default http://roku-proxy/api/roku/<path>?ip=<ip>).
 // That proxy is not running in the test environment, so forward those calls straight to the mock
@@ -44,10 +44,33 @@ test.describe('Multiple Rokus', () => {
     await addRoku(page, 'localhost');
     await addRoku(page, '127.0.0.1');
     await page.goto('/remote');
+    // Both Rokus share the mock, hence the same name: prove the switch via storage, not the label.
+    const readActive = () => page.evaluate(() => {
+      const rokus = JSON.parse(localStorage.getItem('rokus') || '[]');
+      const id = localStorage.getItem('active-roku-id');
+      const entry = rokus.find((r: any) => r.id === id);
+      return { id, ip: entry?.ip as string | undefined };
+    });
+    const before = await readActive();
+    expect(before.id).toBeTruthy();
+
+    const items = page.locator('app-roku-switcher .menu li');
     await page.click('app-roku-switcher .current');
-    await expect(page.locator('app-roku-switcher .menu li')).toHaveCount(3); // two Rokus + Manage
-    await page.locator('app-roku-switcher .menu li').first().click();
-    await expect(page.locator('app-roku-switcher .current')).toContainText('Roku');
+    await expect(items).toHaveCount(3); // two Rokus + Manage
+    const activeIndexBefore = await items.evaluateAll(els => els.findIndex(e => e.classList.contains('active')));
+    expect(activeIndexBefore).toBeGreaterThanOrEqual(0);
+    await page.locator('app-roku-switcher .menu li:not(.active):not(.manage)').click();
+
+    await expect.poll(async () => (await readActive()).id).not.toBe(before.id);
+    const after = await readActive();
+    expect(after.ip).toBeTruthy();
+    expect(after.ip).not.toBe(before.ip);
+
+    await page.click('app-roku-switcher .current');
+    await expect(items).toHaveCount(3);
+    const activeIndexAfter = await items.evaluateAll(els => els.findIndex(e => e.classList.contains('active')));
+    expect(activeIndexAfter).toBeGreaterThanOrEqual(0);
+    expect(activeIndexAfter).not.toBe(activeIndexBefore);
   });
 
   test('launch goes straight to the apps screen when a Roku is saved', async ({ page }) => {
@@ -64,9 +87,13 @@ test.describe('Multiple Rokus', () => {
 
   test('unreachable Roku lands on setup with an explanation', async ({ page }) => {
     await addRoku(page, 'localhost');
+    // Playwright runs later-registered routes first, so this abort must be registered
+    // after the forward-to-mock route from beforeEach to take precedence.
     await page.route(/\/api\/roku\/query\/device-info\?ip=localhost/, route => route.abort());
     await page.goto('/');
-    await expect(page.locator('[data-testid=unreachable-banner]')).toContainText("Couldn't reach", { timeout: 8000 });
+    const banner = page.locator('[data-testid=unreachable-banner]');
+    await expect(banner).toContainText("Couldn't reach", { timeout: 8000 });
+    await expect(banner).toContainText('localhost');
     await expect(page).toHaveURL(/\/setup/);
   });
 
