@@ -58,7 +58,7 @@ export class AudioPlayerService {
     this._isPlaying = true;
 
     this.startBackgroundAudioSupport();
-    void this.native.start(() => { this.stop(); this.proxy.stopListening().subscribe({ error: () => {} }); });
+    void this.native.start(() => { void this.stop().catch(() => {}); this.proxy.stopListening().subscribe({ error: () => {} }); });
     this.streamAudio(audioStreamUrl);
   }
 
