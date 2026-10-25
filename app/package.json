@@ -24,6 +24,7 @@
     "@angular/service-worker": "^22.2.3",
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@capawesome-team/capacitor-android-foreground-service": "^8.1.0",
     "opus-decoder": "^0.7.11",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

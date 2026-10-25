@@ -1,4 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { NativeBackgroundService } from './native-background.service';
+import { ProxyService } from './proxy.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +22,9 @@ export class AudioPlayerService {
   private audioElement: HTMLAudioElement | null = null;
   private wakeLock: any = null;
   private visibilityHandler: (() => void) | null = null;
+
+  private native = inject(NativeBackgroundService);
+  private proxy = inject(ProxyService);
 
   constructor() {
     const stored = localStorage.getItem(AudioPlayerService.STORAGE_KEY);
@@ -53,6 +58,7 @@ export class AudioPlayerService {
     this._isPlaying = true;
 
     this.startBackgroundAudioSupport();
+    void this.native.start(() => { this.stop(); this.proxy.stopListening().subscribe({ error: () => {} }); });
     this.streamAudio(audioStreamUrl);
   }
 
@@ -62,6 +68,7 @@ export class AudioPlayerService {
     this.abortController = null;
 
     this.stopBackgroundAudioSupport();
+    void this.native.stop();
 
     if (this.decoder) {
       this.decoder.free();
