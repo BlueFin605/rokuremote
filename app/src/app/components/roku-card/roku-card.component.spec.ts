@@ -159,6 +159,25 @@ describe('RokuCardComponent', () => {
     });
   }
 
+  it('limited-mode error shows the enable steps, other errors do not', async () => {
+    save.and.rejectWith(new SaveError('roku', 'Limited', 'limited-mode'));
+    create();
+    click('edit-r1');
+    click('card-save');
+    await flush();
+    expect(q('card-limited-steps')!.textContent).toContain('Control by Mobile Apps');
+    save.and.rejectWith(new SaveError('roku', 'nope'));
+    click('card-save');
+    await flush();
+    expect(q('card-error')).not.toBeNull();
+    expect(q('card-limited-steps')).toBeNull();
+  });
+
+  it('edit mode hints where to find the Roku IP', () => {
+    create({ roku: null });
+    expect(q('card-edit')!.textContent).toContain('Settings > Network > About');
+  });
+
   it('pairing-required shows a warning', async () => {
     save.and.resolveTo({ id: 'r1', tvStatus: 'pairing-required' });
     create();

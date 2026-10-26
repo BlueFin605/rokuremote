@@ -61,6 +61,15 @@ describe('RokuConfigService.save', () => {
     expect(err.message).toBe('Could not connect to Roku');
   });
 
+  it('keeps kind limited-mode from the connect error', async () => {
+    roku.connect.and.returnValue(throwError(() => ({ type: 'limited-mode', message: 'Limited' })));
+    const err = await svc.save(draft({ ip: '10.0.0.9' })).catch(e => e);
+    expect(err.kind).toBe('limited-mode');
+    roku.connect.and.returnValue(throwError(() => ({ type: 'unknown', message: 'x' })));
+    const err2 = await svc.save(draft({ ip: '10.0.0.9' })).catch(e => e);
+    expect(err2.kind).toBeUndefined();
+  });
+
   it('uses a fallback message when the connect error has no message', async () => {
     roku.connect.and.returnValue(throwError(() => ({})));
     const err = await svc.save(draft({ ip: '10.0.0.9' })).catch(e => e);

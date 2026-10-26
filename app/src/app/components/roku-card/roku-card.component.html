@@ -30,6 +30,7 @@
     <label>Roku IP
       <input data-testid="card-roku-ip" [(ngModel)]="draft.ip" [disabled]="saving" (keydown.enter)="submit()" />
     </label>
+    <p class="hint">Find your Roku's IP at: Settings &gt; Network &gt; About</p>
     <label>TV type
       <select data-testid="card-tv-type" [ngModel]="draft.tvType" (ngModelChange)="onTypeChange($event)" [disabled]="saving">
         <option value="none">None</option>
@@ -56,6 +57,9 @@
       }
     }
     @if (error) { <div class="error" data-testid="card-error" [attr.data-stage]="error.stage">{{ error.message }}</div> }
+    @if (error?.kind === 'limited-mode') {
+      <p class="hint" data-testid="card-limited-steps">Enable external control: Settings &gt; System &gt; Advanced System Settings &gt; Control by Mobile Apps &gt; Network Access &gt; Enabled</p>
+    }
     <div class="actions">
       <button type="button" class="primary" data-testid="card-save" [disabled]="saving" (click)="submit()">{{ saving ? 'Saving...' : 'Save' }}</button>
       <button type="button" data-testid="card-cancel" (click)="cancel()">Cancel</button>

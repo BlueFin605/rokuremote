@@ -149,6 +149,22 @@ describe('SetupComponent', () => {
     expect(q('[data-testid=roku-card-b]')).toBeNull();
   });
 
+  it('deleting the active Roku leaves the other card', async () => {
+    await setup();
+    component.deleteRoku('a');
+    fixture.detectChanges();
+    expect(q('[data-testid=roku-card-a]')).toBeNull();
+    expect(q('[data-testid=roku-card-b]')).toBeTruthy();
+  });
+
+  it('deleting the last Roku shows a new card and hides Close', async () => {
+    await setup({ rokus: [mk('a', 'Lounge', '10.0.0.1')] });
+    component.deleteRoku('a');
+    fixture.detectChanges();
+    expect(q('[data-testid=new-roku-card]')).toBeTruthy();
+    expect(q('.close-btn')).toBeNull();
+  });
+
   it('shows Close only when a Roku is active', async () => {
     await setup();
     expect(q('.close-btn')).toBeTruthy();

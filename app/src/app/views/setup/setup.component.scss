@@ -105,6 +105,10 @@ $purple: #6c2dc7;
   border: 1px solid $purple;
   border-radius: 8px;
   cursor: pointer;
+
+  &:hover {
+    background: #f4edff;
+  }
 }
 
 .error {
@@ -134,6 +138,10 @@ $purple: #6c2dc7;
     background: none;
     border: none;
     cursor: pointer;
+
+    &:hover {
+      color: $purple;
+    }
   }
 
   .proxy-config {
@@ -155,11 +163,18 @@ $purple: #6c2dc7;
         font-size: 1rem;
         border: 2px solid #ccc;
         border-radius: 8px;
+
+        &:focus {
+          border-color: $purple;
+          outline: none;
+        }
       }
 
       button {
         padding: 0.75rem 1.25rem;
         font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
         color: #fff;
         background: $purple;
         border: none;
@@ -179,6 +194,11 @@ $purple: #6c2dc7;
       border: 1px solid $purple;
       border-radius: 6px;
       cursor: pointer;
+
+      &:hover {
+        background: $purple;
+        color: #fff;
+      }
     }
 
     .hint.mode {

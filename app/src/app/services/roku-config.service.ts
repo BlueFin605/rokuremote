@@ -7,7 +7,7 @@ import type { TvType } from './saved-roku';
 export interface RokuDraft { id: string | null; name: string; ip: string; tvType: TvType; tvIp: string; }
 export interface SaveResult { id: string; tvStatus: 'none' | 'ok' | 'pairing-required'; }
 export class SaveError extends Error {
-  constructor(public stage: 'roku' | 'tv', message: string) { super(message); }
+  constructor(public stage: 'roku' | 'tv', message: string, public kind?: 'limited-mode') { super(message); }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,7 +28,7 @@ export class RokuConfigService {
       try {
         await firstValueFrom(this.roku.connect(ip, { replaceId: draft.id ?? undefined }));
       } catch (e: any) {
-        throw new SaveError('roku', e?.message ?? 'Could not connect to Roku');
+        throw new SaveError('roku', e?.message ?? 'Could not connect to Roku', e?.type === 'limited-mode' ? 'limited-mode' : undefined);
       }
       const saved = this.roku.rokus.find(r => r.ip === ip);
       if (!saved) throw new SaveError('roku', 'Could not connect to Roku');
