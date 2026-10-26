@@ -7,6 +7,7 @@ import { NativeInfoService } from './native-info.service';
 
 export interface LatestBundle { version: string; url: string; minNativeVersion: string; }
 export type UpdateState = 'none' | 'available' | 'native-required';
+export const BUNDLE_URL_PREFIX = 'https://roku.bluefin605.com/android/bundles/';
 export const LATEST_URL = 'https://roku.bluefin605.com/android/bundles/latest.json';
 
 export function versionNumber(v: string): number {
@@ -62,6 +63,10 @@ export class UpdateService {
   async apply(): Promise<void> {
     if (this.state !== 'available' || !this.latest || this.progress$.value !== null) return;
     const latest = this.latest;
+    if (!latest.url.startsWith(BUNDLE_URL_PREFIX)) {
+      this.error$.next('Update failed, try again');
+      return;
+    }
     this.error$.next(null);
     this.progress$.next(0);
     let listener: { remove(): Promise<void> } | null = null;
@@ -79,6 +84,8 @@ export class UpdateService {
 
   async check(): Promise<void> {
     if (!this.native.isNative) return;
+    if (this.progress$.value !== null) return;
+    if (this.installed === 'dev') return this.set(null, 'none');
     try {
       const res = await this.http({ url: LATEST_URL + '?t=' + Date.now() });
       const d = res.data as Partial<LatestBundle> | null;

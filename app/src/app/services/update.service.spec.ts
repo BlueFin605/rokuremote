@@ -43,6 +43,22 @@ describe('UpdateService', () => {
     ok(bundle('1.0.6', '1.0.20')); const s = setup({ nativeVersion: '1.0.10' }); await s.check();
     expect(s.state).toBe('native-required');
   });
+  it('native version equal to minNativeVersion -> available', async () => {
+    ok(bundle('1.0.6', '1.0.10')); const s = setup({ nativeVersion: '1.0.10' }); await s.check();
+    expect(s.state).toBe('available');
+  });
+  it('minNativeVersion 1.0.0 with native 1.0.5 -> available', async () => {
+    ok(bundle('1.0.6', '1.0.0')); const s = setup({ nativeVersion: '1.0.5' }); await s.check();
+    expect(s.state).toBe('available');
+  });
+  it('unknown native version with min above 0 -> native-required', async () => {
+    ok(bundle('1.0.6', '1.0.3')); const s = setup(); native.getAppVersion.and.resolveTo(null); await s.check();
+    expect(s.state).toBe('native-required');
+  });
+  it('dev build never offers an update', async () => {
+    ok(bundle('1.0.6')); const s = setup({ installed: 'dev' }); await s.check();
+    expect(s.state).toBe('none');
+  });
   it('fetch rejects -> none', async () => {
     get.and.rejectWith(new Error('x')); const s = setup(); await s.check(); expect(s.state).toBe('none');
   });
@@ -76,7 +92,7 @@ describe('UpdateService', () => {
           onDownload = cb; return { remove };
         }),
       };
-      ok({ version: '1.0.6', url: 'https://x/1.0.6.zip', minNativeVersion: '1.0.1' });
+      ok({ version: '1.0.6', url: 'https://roku.bluefin605.com/android/bundles/1.0.6.zip', minNativeVersion: '1.0.1' });
       const s = setup({ plugin });
       if (check) await s.check();
       return s;
@@ -85,11 +101,33 @@ describe('UpdateService', () => {
     it('success: download then set with returned bundle, removes listener', async () => {
       const s = await ready();
       await s.apply();
-      expect(plugin.download).toHaveBeenCalledWith({ url: 'https://x/1.0.6.zip', version: '1.0.6' });
+      expect(plugin.download).toHaveBeenCalledWith({ url: 'https://roku.bluefin605.com/android/bundles/1.0.6.zip', version: '1.0.6' });
       expect(plugin.set).toHaveBeenCalledWith({ id: 'b1', version: '1.0.6' });
       expect(plugin.download).toHaveBeenCalledBefore(plugin.set);
       expect(remove).toHaveBeenCalled();
       expect(s.error$.value).toBeNull();
+    });
+    it('rejects a url outside the bundles path without downloading', async () => {
+      const s = await ready(false);
+      ok({ version: '1.0.6', url: 'https://evil.example.com/1.0.6.zip', minNativeVersion: '1.0.1' });
+      await s.check();
+      await s.apply();
+      expect(plugin.download).not.toHaveBeenCalled();
+      expect(s.error$.value).toBe('Update failed, try again');
+      expect(s.progress$.value).toBeNull();
+    });
+    it('check() during a download does not change state', async () => {
+      const s = await ready();
+      let finish!: (b: unknown) => void;
+      plugin.download.and.returnValue(new Promise(r => { finish = r; }));
+      const p = s.apply();
+      await new Promise(r => setTimeout(r));
+      get.and.rejectWith(new Error('net'));
+      await s.check();
+      expect(s.state).toBe('available');
+      expect(s.latest).not.toBeNull();
+      finish({ id: 'b1' });
+      await p;
     });
     it('does nothing unless state is available', async () => {
       const s = await ready(false);

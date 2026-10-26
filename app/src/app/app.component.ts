@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DemoModeService } from './services/demo-mode.service';
 import { NativeInfoService } from './services/native-info.service';
-import { UPDATER_PLUGIN } from './services/update.service';
+import { UPDATER_PLUGIN, UpdateService } from './services/update.service';
 
 @Component({
   selector: 'app-root',
@@ -16,9 +16,11 @@ export class AppComponent {
 
   private readonly native = inject(NativeInfoService);
   private readonly updater = inject(UPDATER_PLUGIN);
+  private readonly update = inject(UpdateService);
 
   constructor(public demoMode: DemoModeService) {
     // Confirms this bundle booted; without it the updater rolls back automatically.
     if (this.native.isNative) void this.updater.notifyAppReady().catch(() => undefined);
+    void this.update.check();
   }
 }

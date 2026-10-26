@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { AppComponent } from './app.component';
 import { routes } from './app.routes';
 import { NativeInfoService } from './services/native-info.service';
-import { UPDATER_PLUGIN } from './services/update.service';
+import { UPDATER_PLUGIN, UpdateService } from './services/update.service';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -46,5 +46,16 @@ describe('AppComponent', () => {
     it('is not called in a browser', async () => {
       expect((await create(false)).notifyAppReady).not.toHaveBeenCalled();
     });
+  });
+
+  it('checks for an update on startup', async () => {
+    const update = { check: jasmine.createSpy('check').and.resolveTo() };
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [AppComponent],
+      providers: [provideRouter(routes), { provide: UpdateService, useValue: update }],
+    }).compileComponents();
+    TestBed.createComponent(AppComponent);
+    expect(update.check).toHaveBeenCalledTimes(1);
   });
 });
