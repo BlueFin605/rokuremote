@@ -53,6 +53,8 @@
         [active]="r.id === activeId"
         [unreachable]="r.id === unreachable?.id"
         [proxyAvailable]="proxyAvailable"
+        [editLocked]="newCardOpen || (editingId !== null && editingId !== r.id)"
+        (editingChange)="onEditingChange(r.id, $event)"
         (use)="useRoku($event)"
         (delete)="deleteRoku($event)"
         (saved)="onSaved($event)"
@@ -68,7 +70,7 @@
         (cancelled)="cancelAdd()"
       />
     } @else {
-      <button class="add-btn" data-testid="add-roku" (click)="startAdd()">Add Roku</button>
+      <button class="add-btn" data-testid="add-roku" [disabled]="anyEditing" (click)="startAdd()">Add Roku</button>
     }
   </div>
 

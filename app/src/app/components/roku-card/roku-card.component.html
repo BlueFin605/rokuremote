@@ -17,7 +17,7 @@
     } @else {
       <div class="actions">
         <button type="button" class="primary" [attr.data-testid]="'use-' + roku?.id" (click)="roku && use.emit(roku.id)">Use</button>
-        <button type="button" [attr.data-testid]="'edit-' + roku?.id" (click)="startEdit()">Edit</button>
+        <button type="button" [attr.data-testid]="'edit-' + roku?.id" [disabled]="editLocked" (click)="startEdit()">Edit</button>
         <button type="button" class="danger" [attr.data-testid]="'delete-' + roku?.id" (click)="confirmingDelete = true">Delete</button>
       </div>
     }

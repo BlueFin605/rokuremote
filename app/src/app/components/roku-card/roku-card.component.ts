@@ -17,12 +17,14 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
   @Input() active = false;
   @Input() unreachable = false;
   @Input() proxyAvailable = false;
+  @Input() editLocked = false;
   @Input() prefill: { ip: string; name: string } | null = null;
 
   @Output() use = new EventEmitter<string>();
   @Output() delete = new EventEmitter<string>();
   @Output() saved = new EventEmitter<SaveResult>();
   @Output() cancelled = new EventEmitter<void>();
+  @Output() editingChange = new EventEmitter<boolean>();
 
   editing = false;
   confirmingDelete = false;
@@ -60,6 +62,7 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
     this.confirmingDelete = false;
     this.error = null;
     this.warning = null;
+    this.editingChange.emit(true);
   }
 
   cancel(): void {
@@ -69,6 +72,7 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
     this.error = null;
     this.discovered = null;
     this.discovering = false;
+    this.editingChange.emit(false);
     this.cancelled.emit();
   }
 
@@ -102,6 +106,7 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
     try {
       const result = await this.config.save({ ...this.draft });
       this.editing = false;
+      this.editingChange.emit(false);
       this.discovered = null;
       if (result.tvStatus === 'pairing-required') {
         this.warning = 'Pairing required (support coming in a future update)';

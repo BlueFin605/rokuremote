@@ -95,6 +95,25 @@ describe('SetupComponent', () => {
     expect(q('[data-testid=add-roku]')).toBeTruthy();
   });
 
+  it('only one card is editable at a time', async () => {
+    await setup();
+    const dis = (id: string) => (q('[data-testid=' + id + ']') as HTMLButtonElement).disabled;
+    expect(dis('edit-a')).toBeFalse();
+    q('[data-testid=edit-a]')!.click();
+    fixture.detectChanges();
+    expect(dis('edit-b')).toBeTrue();
+    expect(dis('add-roku')).toBeTrue();
+    q('[data-testid=card-cancel]')!.click();
+    fixture.detectChanges();
+    expect(dis('edit-a')).toBeFalse();
+    expect(dis('edit-b')).toBeFalse();
+    expect(dis('add-roku')).toBeFalse();
+    q('[data-testid=add-roku]')!.click();
+    fixture.detectChanges();
+    expect(dis('edit-a')).toBeTrue();
+    expect(dis('edit-b')).toBeTrue();
+  });
+
   it('saving a new card removes it and clears prefill', async () => {
     await setup();
     save.and.resolveTo({ id: 'c', tvStatus: 'none' });

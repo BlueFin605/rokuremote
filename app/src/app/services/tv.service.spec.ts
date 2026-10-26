@@ -15,10 +15,10 @@ describe('TvService', () => {
     expect(tv.configured).toBeFalse();
     expect(tv.type).toBe('none');
   });
-  it('configure stores the TV on the active Roku and follows the active Roku', () => {
+  it('follows the TV of the active Roku', () => {
     const roku = TestBed.inject(RokuService);
     const tv = TestBed.inject(TvService);
-    tv.configure('panasonic', '10.0.0.90');
+    roku.setTv(roku.activeRoku!.id, 'panasonic', '10.0.0.90');
     expect(tv.configured).toBeTrue();
     expect(roku.activeRoku!.tv).toEqual({ type: 'panasonic', ip: '10.0.0.90' });
     roku.connect('10.0.0.2').subscribe(); // second Roku starts with no TV
@@ -47,20 +47,5 @@ describe('TvService', () => {
     tv.test('panasonic', '10.0.0.77').subscribe(r => results.push(r));
     http.expectOne(r => r.url.includes('/tv/volume')).flush('boom', { status: 500, statusText: 'x' });
     expect(results).toEqual([{ ok: false, pairingRequired: true }, { ok: false }]);
-  });
-  it('testConnection delegates to test with the current type/ip', () => {
-    const tv = TestBed.inject(TvService);
-    const http = TestBed.inject(HttpTestingController);
-    tv.configure('panasonic', '10.0.0.90');
-    tv.testConnection().subscribe();
-    const req = http.expectOne(r => r.url.includes('/tv/volume'));
-    expect(req.request.url).toContain('ip=10.0.0.90');
-    req.flush({ volume: 1 });
-  });
-  it('configure none clears the active Roku TV', () => {
-    const tv = TestBed.inject(TvService);
-    tv.configure('panasonic', '10.0.0.90');
-    tv.configure('none', null);
-    expect(tv.configured).toBeFalse();
   });
 });

@@ -140,10 +140,6 @@ export class RokuService {
     return this.activeRoku?.deviceInfo ?? null;
   }
 
-  disconnect(): void {
-    if (this._activeId) this.removeRoku(this._activeId);
-  }
-
   private loadRokus(): void {
     const raw = localStorage.getItem(RokuService.ROKUS_KEY);
     if (raw !== null) {
@@ -230,12 +226,6 @@ export class RokuService {
     const tv = type === 'none' || !ip ? { type: 'none' as TvType, ip: null } : { type, ip };
     this._rokus = this._rokus.map(r => (r.id === id ? { ...r, tv } : r));
     this.persist();
-  }
-
-  setActiveTv(type: TvType, ip: string | null): void {
-    const active = this.activeRoku;
-    if (!active) return;
-    this.setTv(active.id, type, ip);
   }
 
   isConnected(): boolean {

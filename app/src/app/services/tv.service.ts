@@ -44,8 +44,6 @@ export class TvService {
   get type(): TvType { return this.roku.activeRoku?.tv.type ?? 'none'; }
   get ip(): string | null { return this.roku.activeRoku?.tv.ip ?? null; }
 
-  configure(type: TvType, ip: string | null): void { this.roku.setActiveTv(type, ip); }
-
   command(action: TvAction): void {
     this.commandQueue.next(action);
   }
@@ -62,10 +60,6 @@ export class TvService {
         return of(-1);
       }),
     );
-  }
-
-  testConnection(): Observable<{ ok: boolean; pairingRequired?: boolean }> {
-    return this.test(this.type, this.ip as string);
   }
 
   test(type: TvType, ip: string): Observable<{ ok: boolean; pairingRequired?: boolean }> {

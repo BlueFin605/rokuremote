@@ -159,6 +159,21 @@ describe('RokuCardComponent', () => {
     });
   }
 
+  it('emits editingChange on edit, cancel and successful save; editLocked disables Edit', async () => {
+    create();
+    const out: boolean[] = [];
+    fixture.componentInstance.editingChange.subscribe(v => out.push(v));
+    click('edit-r1');
+    click('card-cancel');
+    click('edit-r1');
+    click('card-save');
+    await flush();
+    expect(out).toEqual([true, false, true, false]);
+    fixture.componentRef.setInput('editLocked', true);
+    fixture.detectChanges();
+    expect((q('edit-r1') as HTMLButtonElement).disabled).toBeTrue();
+  });
+
   it('adopts the id of a Roku created before a TV-stage failure so a retry is an edit', async () => {
     save.and.rejectWith(new SaveError('tv', 'Could not reach the TV', undefined, 'created-1'));
     create({ roku: null, prefill: { ip: '192.168.1.99', name: 'Kitchen' } });

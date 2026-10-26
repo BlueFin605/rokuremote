@@ -27,6 +27,14 @@ export class SetupComponent implements OnInit {
   readonly isAndroidBrowser = !Capacitor.isNativePlatform() && /Android/i.test(navigator.userAgent);
 
   adding = false;
+  editingId: string | null = null;
+
+  get newCardOpen(): boolean { return this.adding || this.rokus.length === 0; }
+  get anyEditing(): boolean { return this.newCardOpen || this.editingId !== null; }
+  onEditingChange(id: string, editing: boolean): void {
+    if (editing) this.editingId = id;
+    else if (this.editingId === id) this.editingId = null;
+  }
   prefill: { ip: string; name: string } | null = null;
   loading = false;
   error: { type: string; message: string } | null = null;
