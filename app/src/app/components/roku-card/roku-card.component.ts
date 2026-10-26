@@ -43,7 +43,8 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
       if (!this.roku) this.startEdit();
       return;
     }
-    if (changes['roku'] && !this.editing) this.resetDraft();
+    if (changes['prefill'] && !this.roku) this.startEdit();
+    else if (changes['roku'] && !this.editing) this.resetDraft();
   }
 
   ngOnDestroy(): void { this.sub?.unsubscribe(); }
@@ -73,6 +74,8 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
 
   onTypeChange(type: TvType): void {
     this.draft.tvType = type;
+    this.sub?.unsubscribe();
+    this.discovering = false;
     this.discovered = null;
   }
 

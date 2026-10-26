@@ -1,5 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { RokuCardComponent } from './roku-card.component';
 import { RokuConfigService, RokuDraft, SaveError, SaveResult } from '../../services/roku-config.service';
 import { TvService } from '../../services/tv.service';
@@ -189,6 +189,29 @@ describe('RokuCardComponent', () => {
     expect(q('card-edit')).not.toBeNull();
     expect(input('card-roku-ip').value).toBe('192.168.1.99');
     expect(input('card-name').value).toBe('Kitchen');
+  });
+
+  it('changing the TV type cancels an in-flight discover', async () => {
+    const subj = new Subject<{ ip: string; name: string }[]>();
+    discover.and.returnValue(subj);
+    create();
+    click('edit-r1');
+    click('card-discover-tv');
+    expect(fixture.componentInstance.discovering).toBeTrue();
+    fixture.componentInstance.onTypeChange('none');
+    expect(fixture.componentInstance.discovering).toBeFalse();
+    subj.next([{ ip: '1.1.1.1', name: 'Late' }]);
+    expect(fixture.componentInstance.discovered).toBeNull();
+  });
+
+  it('a new prefill replaces the draft of a new card', async () => {
+    create({ roku: null, prefill: { ip: '192.168.1.99', name: 'Kitchen' } });
+    await flush();
+    fixture.componentRef.setInput('prefill', { ip: '192.168.1.5', name: 'Den' });
+    fixture.detectChanges();
+    await flush();
+    expect(input('card-roku-ip').value).toBe('192.168.1.5');
+    expect(input('card-name').value).toBe('Den');
   });
 
   it('new card save sends null id', async () => {

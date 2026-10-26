@@ -1,3 +1,21 @@
+$purple: #6c2dc7;
+
+%primary-btn {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: $purple;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
 .setup {
   max-width: 400px;
   margin: 0 auto;
@@ -7,7 +25,7 @@
   h1 {
     text-align: center;
     margin-bottom: 0.35rem;
-    color: #6c2dc7;
+    color: $purple;
   }
 
   .app-version {
@@ -18,25 +36,27 @@
   }
 }
 
+.roku-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.add-btn,
+.discover-btn {
+  @extend %primary-btn;
+}
+
+.close-btn {
+  @extend %primary-btn;
+  display: block;
+  margin-top: 2rem;
+}
+
 .discover-section {
   margin-bottom: 1.5rem;
   text-align: center;
-
-  .discover-btn {
-    width: 100%;
-    padding: 0.75rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fff;
-    background: #6c2dc7;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.5;
-    }
-  }
 
   .device-list {
     margin-top: 1rem;
@@ -57,7 +77,7 @@
     color: #fff;
 
     &:hover {
-      border-color: #6c2dc7;
+      border-color: $purple;
     }
 
     span {
@@ -65,87 +85,12 @@
       color: #aaa;
     }
   }
-
-  .hint {
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
-    color: #888;
-  }
 }
 
-.connect-form {
-  label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-
-  .input-row {
-    display: flex;
-    gap: 0.5rem;
-
-    input {
-      flex: 1;
-      padding: 0.75rem;
-      font-size: 1rem;
-      border: 2px solid #ccc;
-      border-radius: 8px;
-      outline: none;
-
-      &:focus {
-        border-color: #6c2dc7;
-      }
-    }
-
-    button {
-      padding: 0.75rem 1.25rem;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #fff;
-      background: #6c2dc7;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      white-space: nowrap;
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
-  }
-
-  .hint {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: #888;
-  }
-}
-
-.roku-status {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+.hint {
+  margin-top: 0.75rem;
   font-size: 0.85rem;
-
-  &.success {
-    background: #e8f5e9;
-    color: #2e7d32;
-  }
-}
-
-.close-btn {
-  display: block;
-  width: 100%;
-  margin-top: 2rem;
-  padding: 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  background: #6c2dc7;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  color: #888;
 }
 
 .versions-btn {
@@ -155,15 +100,11 @@
   padding: 0.7rem;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #6c2dc7;
+  color: $purple;
   background: transparent;
-  border: 1px solid #6c2dc7;
+  border: 1px solid $purple;
   border-radius: 8px;
   cursor: pointer;
-
-  &:hover {
-    background: #f4edff;
-  }
 }
 
 .error {
@@ -171,127 +112,12 @@
   padding: 1rem;
   background: #fce4ec;
   border-radius: 8px;
-
-  .instructions {
-    margin: 1rem 0;
-    padding: 1rem;
-    background: #fff;
-    border-radius: 8px;
-
-    ol {
-      padding-left: 1.25rem;
-      li {
-        margin-bottom: 0.5rem;
-      }
-    }
-  }
-
-  .retry {
-    display: block;
-    width: 100%;
-    padding: 0.75rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fff;
-    background: #6c2dc7;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-top: 1rem;
-  }
 }
 
-.tv-section {
-  margin-top: 2rem;
-  border-top: 1px solid #ddd;
-  padding-top: 1rem;
-
-  .tv-connect-form {
-    margin-top: 0.25rem;
-  }
-
-  select {
-    width: 100%;
-    padding: 0.75rem;
-    font-size: 1rem;
-    border: 2px solid #ccc;
-    border-radius: 8px;
-    outline: none;
-    background: #fff;
-    margin-bottom: 0.75rem;
-
-    &:focus {
-      border-color: #6c2dc7;
-    }
-  }
-
-  .tv-status {
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-
-    &.success {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-
-    &.warning {
-      background: #fff3e0;
-      color: #e65100;
-    }
-
-    &.error {
-      background: #fce4ec;
-      color: #c62828;
-    }
-  }
-
-  // Reuse discover-section styles
-  .discover-btn {
-    width: 100%;
-    padding: 0.75rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #fff;
-    background: #6c2dc7;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.5;
-    }
-  }
-
-  .device-list {
-    margin-top: 0.75rem;
-    margin-bottom: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .device-item {
-    display: flex;
-    flex-direction: column;
-    padding: 0.75rem;
-    background: #2d2d44;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    text-align: left;
-    color: #fff;
-
-    &:hover {
-      border-color: #6c2dc7;
-    }
-
-    span {
-      font-size: 0.8rem;
-      color: #aaa;
-    }
-  }
+.unreachable-banner .actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .proxy-section {
@@ -308,11 +134,6 @@
     background: none;
     border: none;
     cursor: pointer;
-    text-align: center;
-
-    &:hover {
-      color: #6c2dc7;
-    }
   }
 
   .proxy-config {
@@ -334,23 +155,15 @@
         font-size: 1rem;
         border: 2px solid #ccc;
         border-radius: 8px;
-        outline: none;
-
-        &:focus {
-          border-color: #6c2dc7;
-        }
       }
 
       button {
         padding: 0.75rem 1.25rem;
-        font-size: 1rem;
         font-weight: 600;
         color: #fff;
-        background: #6c2dc7;
+        background: $purple;
         border: none;
         border-radius: 8px;
-        cursor: pointer;
-        white-space: nowrap;
       }
     }
 
@@ -361,125 +174,38 @@
     .reset-btn {
       padding: 0.4rem 0.75rem;
       font-size: 0.85rem;
-      color: #6c2dc7;
+      color: $purple;
       background: none;
-      border: 1px solid #6c2dc7;
-      border-radius: 6px;
-      cursor: pointer;
-
-      &:hover {
-        background: #6c2dc7;
-        color: #fff;
-      }
-    }
-
-    .hint {
-      margin-top: 0.5rem;
-      font-size: 0.85rem;
-      color: #888;
-
-      &.mode {
-        margin-top: 0;
-        margin-bottom: 0.35rem;
-      }
-    }
-  }
-}
-
-.reboot-config {
-  .proxy-actions {
-    display: flex;
-    gap: 0.5rem;
-
-    button {
-      flex: 1;
-    }
-  }
-}
-
-.roku-list {
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-
-  h3 {
-    margin: 0;
-    color: #6c2dc7;
-  }
-
-  .roku-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: #2d2d44;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    color: #fff;
-
-    &.active {
-      border-color: #6c2dc7;
-    }
-
-    &.unreachable {
-      border-left: 4px solid #e53935;
-    }
-
-    .roku-name {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-
-      small {
-        font-size: 0.8rem;
-        color: #aaa;
-      }
-    }
-
-    input {
-      flex: 1;
-      min-width: 0;
-    }
-
-    button {
-      padding: 0.35rem 0.6rem;
-      font-size: 0.8rem;
-      color: #fff;
-      background: #6c2dc7;
-      border: none;
+      border: 1px solid $purple;
       border-radius: 6px;
       cursor: pointer;
     }
-  }
 
-  .discover-btn {
-    padding: 0.6rem;
-    font-weight: 600;
-    color: #fff;
-    background: #6c2dc7;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
+    .hint.mode {
+      margin: 0 0 0.35rem;
+    }
   }
 }
 
-.unreachable-banner .actions {
+.reboot-config .proxy-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+
+  button {
+    flex: 1;
+  }
 }
 
 .android-card {
   margin-bottom: 1.25rem;
   padding: 1rem;
   background: #f4edff;
-  border: 2px solid #6c2dc7;
+  border: 2px solid $purple;
   border-radius: 12px;
   text-align: center;
 
   strong {
-    color: #6c2dc7;
+    color: $purple;
     font-size: 1.1rem;
   }
 
@@ -495,13 +221,12 @@
 
   .android-download {
     display: block;
-    width: 100%;
     box-sizing: border-box;
     padding: 0.75rem;
     font-size: 1rem;
     font-weight: 600;
     color: #fff;
-    background: #6c2dc7;
+    background: $purple;
     border-radius: 8px;
     text-decoration: none;
   }
