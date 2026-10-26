@@ -22,7 +22,7 @@ export class RokuConfigService {
       throw new SaveError('roku', 'Another Roku already uses that IP');
     }
 
-    const existing =draft.id ? this.roku.rokus.find(r => r.id === draft.id) : undefined;
+    const existing = draft.id ? this.roku.rokus.find(r => r.id === draft.id) : undefined;
     let id = existing?.id ?? '';
     if (!existing || existing.ip !== ip) {
       try {
