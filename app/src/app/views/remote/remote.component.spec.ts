@@ -94,6 +94,42 @@ describe('RemoteComponent', () => {
     expect(btn).toBeTruthy();
   });
 
+  describe('disconnect confirmation', () => {
+    const btnByText = (t: string) => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find(b => b.textContent?.trim() === t) as HTMLButtonElement | undefined;
+
+    it('single tap asks for confirmation and does not remove', () => {
+      const spy = spyOn(component['roku'], 'removeRoku');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      expect(spy).not.toHaveBeenCalled();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')!.textContent).toContain('Remove');
+      expect(btnByText('Yes')).toBeTruthy();
+      expect(btnByText('No')).toBeTruthy();
+    });
+
+    it('Yes removes the active Roku', () => {
+      const spy = spyOn(component['roku'], 'removeRoku');
+      const nav = spyOn(component['router'], 'navigate');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      btnByText('Yes')!.click();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(nav).toHaveBeenCalledWith(['/setup']);
+    });
+
+    it('No cancels', () => {
+      const spy = spyOn(component['roku'], 'removeRoku');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      btnByText('No')!.click();
+      fixture.detectChanges();
+      expect(spy).not.toHaveBeenCalled();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')).toBeNull();
+      expect(btnByText('Disconnect')).toBeTruthy();
+    });
+  });
+
   it('should have a private listening button', () => {
     const el: HTMLElement = fixture.nativeElement;
     const btn = Array.from(el.querySelectorAll('button'))

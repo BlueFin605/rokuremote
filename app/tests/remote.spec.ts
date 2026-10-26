@@ -62,6 +62,7 @@ test.describe('Remote Control', () => {
 
   test('should disconnect and return to setup', async ({ page }) => {
     await page.click('button:has-text("Disconnect")');
+    await page.click('button:text-is("Yes")');
     await expect(page).toHaveURL(/\/setup/);
   });
 });

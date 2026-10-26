@@ -83,6 +83,14 @@
     <button class="reboot-btn" (click)="rebootRoku()">Reboot Roku</button>
     <button class="setup-btn" (click)="openSetup()">Setup</button>
     <button class="setup-btn" (click)="openVersions()">ESP32 Image Versions</button>
-    <button class="disconnect-btn" (click)="disconnect()">Disconnect</button>
+    @if (confirmingDisconnect) {
+      <div class="disconnect-confirm" data-testid="disconnect-confirm">
+        <span>Remove {{ activeName }}?</span>
+        <button class="disconnect-btn" (click)="disconnect()">Yes</button>
+        <button (click)="confirmingDisconnect = false">No</button>
+      </div>
+    } @else {
+      <button class="disconnect-btn" (click)="confirmingDisconnect = true">Disconnect</button>
+    }
   </div>
 </div>

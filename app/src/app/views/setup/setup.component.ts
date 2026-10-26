@@ -58,7 +58,7 @@ export class SetupComponent implements OnInit {
     if (typeof window !== 'undefined') {
       this.browserOrigin = window.location.origin;
     }
-    this.unreachable = this.router.getCurrentNavigation()?.extras.state?.['unreachable'] ?? null;
+    this.unreachable = this.router.currentNavigation()?.extras.state?.['unreachable'] ?? null;
     // Make the next /apps or /remote navigation re-run the startup reachability check.
     if (this.unreachable) this.roku.startupVerifiedId = null;
   }

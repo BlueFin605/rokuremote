@@ -196,7 +196,7 @@ describe('SetupComponent unreachable banner', () => {
     httpMock = TestBed.inject(HttpTestingController);
     roku.startupVerifiedId = 'a';
     if (withState) {
-      spyOn(router, 'getCurrentNavigation').and.returnValue({
+      spyOn(router, 'currentNavigation').and.returnValue({
         extras: { state: { unreachable: { id: 'a', name: 'Lounge', ip: '10.0.0.1', message: 'Http failure response for http://x: 502' } } },
       } as any);
     }

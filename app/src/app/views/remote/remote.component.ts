@@ -18,10 +18,15 @@ import { UpdateButtonComponent } from '../../components/update-button/update-but
 export class RemoteComponent implements OnInit, OnDestroy {
   textInput = '';
   disconnected = false;
+  confirmingDisconnect = false;
   tvError = false;
   private volumeRepeatTimer: ReturnType<typeof setInterval> | null = null;
   private subs: Subscription[] = [];
   private audioCtx: AudioContext | null = null;
+
+  get activeName(): string {
+    return this.roku.activeRoku?.name ?? 'this Roku';
+  }
 
   get ecpEnabled(): boolean {
     return this.roku.ecpEnabled;
@@ -163,6 +168,7 @@ export class RemoteComponent implements OnInit, OnDestroy {
   }
 
   disconnect(): void {
+    this.confirmingDisconnect = false;
     this.roku.disconnect();
     this.router.navigate(['/setup']);
   }
