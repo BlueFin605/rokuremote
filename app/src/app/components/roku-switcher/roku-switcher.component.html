@@ -1,13 +1,17 @@
 <div class="switcher">
-  <button class="current" (click)="toggle()" [attr.aria-expanded]="open">
+  <button #trigger class="current" aria-haspopup="menu" [attr.aria-expanded]="open" (click)="toggle()">
     {{ roku.activeRoku?.name ?? 'No Roku' }} &#9662;
   </button>
   @if (open) {
     <ul class="menu" role="menu">
       @for (r of roku.rokus; track r.id) {
-        <li role="menuitem" [class.active]="r.id === roku.activeRoku?.id" (click)="select(r.id)">{{ r.name }}</li>
+        <li role="none" [class.active]="r.id === roku.activeRoku?.id">
+          <button type="button" role="menuitem" (click)="select(r.id)">{{ r.name }}</button>
+        </li>
       }
-      <li role="menuitem" class="manage" (click)="manage()">Manage Rokus</li>
+      <li role="none" class="manage">
+        <button type="button" role="menuitem" (click)="manage()">Manage Rokus</button>
+      </li>
     </ul>
   }
 </div>

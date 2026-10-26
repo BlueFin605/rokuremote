@@ -126,12 +126,12 @@ test.describe('Multiple Rokus', () => {
     const before = await readActive();
     expect(before.id).toBeTruthy();
 
-    const items = page.locator('app-roku-switcher .menu li');
+    const items = page.locator('app-roku-switcher .menu li button');
     await page.click('app-roku-switcher .current');
     await expect(items).toHaveCount(3); // two Rokus + Manage
-    const activeIndexBefore = await items.evaluateAll(els => els.findIndex(e => e.classList.contains('active')));
+    const activeIndexBefore = await items.evaluateAll(els => els.findIndex(e => e.parentElement!.classList.contains('active')));
     expect(activeIndexBefore).toBeGreaterThanOrEqual(0);
-    await page.locator('app-roku-switcher .menu li:not(.active):not(.manage)').click();
+    await page.locator('app-roku-switcher .menu li:not(.active):not(.manage) button').click();
 
     await expect.poll(async () => (await readActive()).id).not.toBe(before.id);
     const after = await readActive();
@@ -140,7 +140,7 @@ test.describe('Multiple Rokus', () => {
 
     await page.click('app-roku-switcher .current');
     await expect(items).toHaveCount(3);
-    const activeIndexAfter = await items.evaluateAll(els => els.findIndex(e => e.classList.contains('active')));
+    const activeIndexAfter = await items.evaluateAll(els => els.findIndex(e => e.parentElement!.classList.contains('active')));
     expect(activeIndexAfter).toBeGreaterThanOrEqual(0);
     expect(activeIndexAfter).not.toBe(activeIndexBefore);
   });

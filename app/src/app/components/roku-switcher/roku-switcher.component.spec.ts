@@ -13,7 +13,7 @@ describe('RokuSwitcherComponent', () => {
   let el: HTMLElement;
   let roku: RokuService;
 
-  const items = () => Array.from(el.querySelectorAll('.menu li')) as HTMLElement[];
+  const items = () => Array.from(el.querySelectorAll('.menu li button')) as HTMLElement[];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -85,7 +85,49 @@ describe('RokuSwitcherComponent', () => {
     const nav = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
     (el.querySelector('.current') as HTMLElement).click();
     fixture.detectChanges();
-    el.querySelector<HTMLElement>('.menu li.manage')!.click();
+    el.querySelector<HTMLElement>('.menu li.manage button')!.click();
     expect(nav).toHaveBeenCalledWith(['/setup']);
+  });
+
+  const openMenu = () => { (el.querySelector('.current') as HTMLElement).click(); fixture.detectChanges(); };
+
+  it('trigger advertises a menu popup and expanded state', () => {
+    const t = el.querySelector('.current')!;
+    expect(t.getAttribute('aria-haspopup')).toBe('menu');
+    expect(t.getAttribute('aria-expanded')).toBe('false');
+    openMenu();
+    expect(t.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('menu items are real buttons with role menuitem', () => {
+    openMenu();
+    expect(items().length).toBe(3);
+    items().forEach(b => {
+      expect(b.tagName).toBe('BUTTON');
+      expect(b.getAttribute('role')).toBe('menuitem');
+    });
+  });
+
+  it('Escape closes the menu and returns focus to the trigger', () => {
+    openMenu();
+    items()[0].focus();
+    items()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(items().length).toBe(0);
+    expect(document.activeElement).toBe(el.querySelector('.current'));
+  });
+
+  it('outside click closes the menu', () => {
+    openMenu();
+    document.body.click();
+    fixture.detectChanges();
+    expect(items().length).toBe(0);
+  });
+
+  it('click inside the component does not close the menu', () => {
+    openMenu();
+    el.querySelector<HTMLElement>('.menu')!.click();
+    fixture.detectChanges();
+    expect(items().length).toBe(3);
   });
 });
