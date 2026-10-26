@@ -65,10 +65,14 @@ export class TvService {
   }
 
   testConnection(): Observable<{ ok: boolean; pairingRequired?: boolean }> {
+    return this.test(this.type, this.ip as string);
+  }
+
+  test(type: TvType, ip: string): Observable<{ ok: boolean; pairingRequired?: boolean }> {
     if (this.demoMode.enabled) {
       return of({ ok: true }).pipe(delay(TvService.MOCK_DELAY_MS));
     }
-    return this.http.get<{ volume: number }>(this.tvUrl('volume')).pipe(
+    return this.http.get<{ volume: number }>(this.tvUrl('volume', type, ip)).pipe(
       timeout(TvService.TIMEOUT_MS),
       map(() => ({ ok: true })),
       catchError(err => {
@@ -103,11 +107,11 @@ export class TvService {
     );
   }
 
-  private tvUrl(path: string): string {
+  private tvUrl(path: string, type: TvType = this.type, ip: string | null = this.ip): string {
     const base = this.proxy.getProxyUrl()
       ? `${this.proxy.getProxyUrl()}/api`
       : '/api';
-    return `${base}/tv/${path}?ip=${this.ip}&type=${this.type}`;
+    return `${base}/tv/${path}?ip=${ip}&type=${type}`;
   }
 
   private initCommandQueue(): void {

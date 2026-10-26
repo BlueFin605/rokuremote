@@ -222,12 +222,16 @@ export class RokuService {
     this.persist();
   }
 
+  setTv(id: string, type: TvType, ip: string | null): void {
+    const tv = type === 'none' || !ip ? { type: 'none' as TvType, ip: null } : { type, ip };
+    this._rokus = this._rokus.map(r => (r.id === id ? { ...r, tv } : r));
+    this.persist();
+  }
+
   setActiveTv(type: TvType, ip: string | null): void {
     const active = this.activeRoku;
     if (!active) return;
-    const tv = type === 'none' || !ip ? { type: 'none' as TvType, ip: null } : { type, ip };
-    this._rokus = this._rokus.map(r => (r.id === active.id ? { ...r, tv } : r));
-    this.persist();
+    this.setTv(active.id, type, ip);
   }
 
   isConnected(): boolean {

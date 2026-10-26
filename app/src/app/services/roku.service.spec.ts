@@ -254,6 +254,25 @@ describe('RokuService', () => {
     });
   });
 
+  describe('setTv', () => {
+    it('sets the TV on a non-active Roku and normalizes none/falsy ip', () => {
+      const s = createService();
+      s.connect('10.0.0.1').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.1')).flush(connectXml);
+      s.connect('10.0.0.2').subscribe(); httpMock.expectOne(r => r.url === rokuUrl('query/device-info', '10.0.0.2')).flush(connectXml);
+      const [a, b] = s.rokus;
+      expect(s.activeRoku!.id).toBe(b.id);
+      s.setTv(a.id, 'panasonic', '10.0.0.9');
+      expect(s.rokus[0].tv).toEqual({ type: 'panasonic', ip: '10.0.0.9' });
+      expect(s.rokus[1].tv).toEqual({ type: 'none', ip: null });
+      expect(createService().rokus[0].tv).toEqual({ type: 'panasonic', ip: '10.0.0.9' });
+      s.setTv(a.id, 'panasonic', null);
+      expect(s.rokus[0].tv).toEqual({ type: 'none', ip: null });
+      s.setTv(a.id, 'panasonic', '10.0.0.9');
+      s.setTv(a.id, 'none', '10.0.0.9');
+      expect(s.rokus[0].tv).toEqual({ type: 'none', ip: null });
+    });
+  });
+
   describe('keypress', () => {
     it('should send POST to correct keypress URL', fakeAsync(() => {
       connectService();
