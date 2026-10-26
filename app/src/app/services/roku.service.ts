@@ -52,6 +52,7 @@ export class RokuService {
   private static readonly MOCK_DELAY_MS = 180;
 
   private static readonly ROKUS_KEY = 'rokus';
+  private static readonly LEGACY_KEYS = ['roku-ip', 'roku-device-info', 'roku-ecp-enabled', 'tv-type', 'tv-ip'];
   private static readonly ACTIVE_KEY = 'active-roku-id';
 
   private _rokus: SavedRoku[] = [];
@@ -157,7 +158,10 @@ export class RokuService {
       return;
     }
     const legacyIp = localStorage.getItem('roku-ip');
-    if (!legacyIp) return;
+    if (!legacyIp) {
+      for (const k of RokuService.LEGACY_KEYS) localStorage.removeItem(k);
+      return;
+    }
     let info: RokuDeviceInfo | null = null;
     try { info = JSON.parse(localStorage.getItem('roku-device-info') ?? 'null'); } catch { info = null; }
     const tvType = (localStorage.getItem('tv-type') as TvType) || 'none';
@@ -171,7 +175,7 @@ export class RokuService {
     this._rokus = [saved];
     this._activeId = saved.id;
     this.persist();
-    for (const k of ['roku-ip', 'roku-device-info', 'roku-ecp-enabled', 'tv-type', 'tv-ip']) localStorage.removeItem(k);
+    for (const k of RokuService.LEGACY_KEYS) localStorage.removeItem(k);
   }
 
   private persist(): void {
