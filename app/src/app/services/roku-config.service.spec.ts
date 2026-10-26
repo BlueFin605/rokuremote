@@ -40,6 +40,34 @@ describe('RokuConfigService.save', () => {
     expect(roku.connect).not.toHaveBeenCalled();
   });
 
+  it('rejects an ip used by another Roku (edit and new card) without changing anything', async () => {
+    list = [...list, saved('b', 'Den', '10.0.0.2')];
+    for (const d of [draft({ ip: '10.0.0.2', name: 'Renamed', tvType: 'panasonic', tvIp: '10.0.0.90' }), draft({ id: null, ip: ' 10.0.0.2 ' })]) {
+      const err = await svc.save(d).catch(e => e);
+      expect(err instanceof SaveError).toBeTrue();
+      expect(err.stage).toBe('roku');
+      expect(err.message).toBe('Another Roku already uses that IP');
+    }
+    expect(roku.connect).not.toHaveBeenCalled();
+    expect(roku.renameRoku).not.toHaveBeenCalled();
+    expect(roku.setTv).not.toHaveBeenCalled();
+    expect(tv.test).not.toHaveBeenCalled();
+  });
+
+  it('errors when connect succeeds but no Roku has that ip', async () => {
+    roku.connect.and.returnValue(of({}));
+    const err = await svc.save(draft({ id: null, ip: '10.0.0.7' })).catch(e => e);
+    expect(err.stage).toBe('roku');
+    expect(err.message).toBe('Could not connect to Roku');
+  });
+
+  it('uses a fallback message when the connect error has no message', async () => {
+    roku.connect.and.returnValue(throwError(() => ({})));
+    const err = await svc.save(draft({ ip: '10.0.0.9' })).catch(e => e);
+    expect(err.stage).toBe('roku');
+    expect(err.message).toBe('Could not connect to Roku');
+  });
+
   it('new roku: connects, resolves id, and uses it', async () => {
     const r = await svc.save(draft({ id: null, name: '', ip: '10.0.0.5' }));
     expect(roku.connect).toHaveBeenCalledWith('10.0.0.5', { replaceId: undefined });
