@@ -302,4 +302,17 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+
+  span { flex: 2; font-size: 0.85rem; color: #ccc; }
+
+  .confirm-btn {
+    flex: 1;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: #ccc;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 8px;
+  }
 }

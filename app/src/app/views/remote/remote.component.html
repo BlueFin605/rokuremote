@@ -84,13 +84,13 @@
     <button class="setup-btn" (click)="openSetup()">Setup</button>
     <button class="setup-btn" (click)="openVersions()">ESP32 Image Versions</button>
     @if (confirmingDisconnect) {
-      <div class="disconnect-confirm" data-testid="disconnect-confirm">
-        <span>Remove {{ activeName }}?</span>
-        <button class="disconnect-btn" (click)="disconnect()">Yes</button>
-        <button (click)="confirmingDisconnect = false">No</button>
+      <div class="disconnect-confirm" data-testid="disconnect-confirm" role="group" [attr.aria-label]="'Confirm removing ' + confirmName">
+        <span>Remove {{ confirmName }}?</span>
+        <button class="confirm-btn" (click)="confirmDisconnectYes()">Yes</button>
+        <button #noBtn class="confirm-btn" (click)="cancelDisconnect()">No</button>
       </div>
     } @else {
-      <button class="disconnect-btn" (click)="confirmingDisconnect = true">Disconnect</button>
+      <button class="disconnect-btn" (click)="askDisconnect()">Disconnect</button>
     }
   </div>
 </div>

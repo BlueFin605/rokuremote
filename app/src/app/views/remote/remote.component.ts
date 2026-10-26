@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ElementRef, ViewChild } from '@angular/core';
 import { RokuSwitcherComponent } from '../../components/roku-switcher/roku-switcher.component';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -18,14 +18,39 @@ import { UpdateButtonComponent } from '../../components/update-button/update-but
 export class RemoteComponent implements OnInit, OnDestroy {
   textInput = '';
   disconnected = false;
-  confirmingDisconnect = false;
+  private confirmTarget: { id: string; name: string } | null = null;
   tvError = false;
   private volumeRepeatTimer: ReturnType<typeof setInterval> | null = null;
+  @ViewChild('noBtn') noButton?: ElementRef<HTMLButtonElement>;
   private subs: Subscription[] = [];
   private audioCtx: AudioContext | null = null;
 
-  get activeName(): string {
-    return this.roku.activeRoku?.name ?? 'this Roku';
+  /** The confirm strip is open only while its target is still the active Roku. */
+  get confirmingDisconnect(): boolean {
+    return !!this.confirmTarget && this.confirmTarget.id === this.roku.activeRoku?.id;
+  }
+
+  get confirmName(): string {
+    return this.confirmTarget?.name ?? '';
+  }
+
+  askDisconnect(): void {
+    const active = this.roku.activeRoku;
+    if (!active) return;
+    this.confirmTarget = { id: active.id, name: active.name };
+    setTimeout(() => this.noButton?.nativeElement.focus());
+  }
+
+  cancelDisconnect(): void {
+    this.confirmTarget = null;
+  }
+
+  confirmDisconnectYes(): void {
+    const target = this.confirmTarget;
+    this.confirmTarget = null;
+    if (!target) return;
+    this.roku.removeRoku(target.id);
+    this.router.navigate(['/setup']);
   }
 
   get ecpEnabled(): boolean {
@@ -167,9 +192,4 @@ export class RemoteComponent implements OnInit, OnDestroy {
     this.router.navigate(['/setup']);
   }
 
-  disconnect(): void {
-    this.confirmingDisconnect = false;
-    this.roku.disconnect();
-    this.router.navigate(['/setup']);
-  }
 }

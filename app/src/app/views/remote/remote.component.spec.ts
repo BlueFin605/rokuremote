@@ -118,6 +118,42 @@ describe('RemoteComponent', () => {
       expect(nav).toHaveBeenCalledWith(['/setup']);
     });
 
+    const fakeRoku = (id: string, name: string) => ({ id, name, ip: '1.1.1.1', tv: { type: 'none', ip: null } }) as any;
+
+    it('Yes removes the Roku that was targeted when the strip opened, even if the active one changed', () => {
+      let current = fakeRoku('a', 'Lounge');
+      spyOnProperty(component['roku'], 'activeRoku', 'get').and.callFake(() => current);
+      const spy = spyOn(component['roku'], 'removeRoku');
+      spyOn(component['router'], 'navigate');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      component.confirmDisconnectYes();
+      expect(spy).toHaveBeenCalledOnceWith('a');
+      current = fakeRoku('b', 'Bedroom');
+    });
+
+    it('closes the strip when the active Roku changes', () => {
+      let current = fakeRoku('a', 'Lounge');
+      spyOnProperty(component['roku'], 'activeRoku', 'get').and.callFake(() => current);
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')).toBeTruthy();
+      current = fakeRoku('b', 'Bedroom');
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')).toBeNull();
+    });
+
+    it('strip is an accessible group and focuses No when opened', fakeAsync(() => {
+      spyOnProperty(component['roku'], 'activeRoku', 'get').and.returnValue(fakeRoku('a', 'Lounge'));
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      const strip = (fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')!;
+      expect(strip.getAttribute('role')).toBe('group');
+      expect(strip.getAttribute('aria-label')).toBe('Confirm removing Lounge');
+      tick();
+      expect(document.activeElement).toBe(btnByText('No')!);
+    }));
+
     it('No cancels', () => {
       const spy = spyOn(component['roku'], 'removeRoku');
       btnByText('Disconnect')!.click();
