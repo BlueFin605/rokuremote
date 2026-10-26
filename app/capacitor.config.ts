@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist/roku-remote/browser',
   server: { androidScheme: 'http', cleartext: true },
   android: { allowMixedContent: true },
+  plugins: { CapacitorUpdater: { autoUpdate: false } },
 };
 
 export default config;

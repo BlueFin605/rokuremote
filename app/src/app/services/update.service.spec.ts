@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { HTTP_GET, INSTALLED_VERSION, LATEST_URL, UpdateService, versionNumber } from './update.service';
+import { HTTP_GET, INSTALLED_VERSION, LATEST_URL, UPDATER_PLUGIN, UpdateService, versionNumber } from './update.service';
 import { NativeInfoService } from './native-info.service';
 
 describe('UpdateService', () => {
   let get: jasmine.Spy;
   let native: { isNative: boolean; getAppVersion: jasmine.Spy };
 
-  function setup(opts: { isNative?: boolean; installed?: string; nativeVersion?: string | null } = {}) {
+  function setup(opts: { isNative?: boolean; installed?: string; nativeVersion?: string | null; plugin?: unknown } = {}) {
     native = {
       isNative: opts.isNative ?? true,
       getAppVersion: jasmine.createSpy().and.resolveTo(opts.nativeVersion ?? '1.0.10'),
@@ -16,6 +16,7 @@ describe('UpdateService', () => {
         { provide: HTTP_GET, useValue: get },
         { provide: NativeInfoService, useValue: native },
         { provide: INSTALLED_VERSION, useValue: opts.installed ?? '1.0.5' },
+        ...(opts.plugin ? [{ provide: UPDATER_PLUGIN, useValue: opts.plugin }] : []),
       ],
     });
     return TestBed.inject(UpdateService);
@@ -58,5 +59,88 @@ describe('UpdateService', () => {
   it('emits on changes$', async () => {
     ok(bundle('1.0.6')); const s = setup(); await s.check();
     expect(s.changes$.value).toBe('available');
+  });
+
+  describe('apply', () => {
+    let plugin: { download: jasmine.Spy; set: jasmine.Spy; notifyAppReady: jasmine.Spy; addListener: jasmine.Spy };
+    let remove: jasmine.Spy;
+    let onDownload: (e: { percent: number }) => void;
+
+    async function ready(check = true) {
+      remove = jasmine.createSpy('remove');
+      plugin = {
+        download: jasmine.createSpy('download').and.resolveTo({ id: 'b1', version: '1.0.6' }),
+        set: jasmine.createSpy('set').and.resolveTo(),
+        notifyAppReady: jasmine.createSpy('notifyAppReady').and.resolveTo(),
+        addListener: jasmine.createSpy('addListener').and.callFake(async (_n: string, cb: (e: { percent: number }) => void) => {
+          onDownload = cb; return { remove };
+        }),
+      };
+      ok({ version: '1.0.6', url: 'https://x/1.0.6.zip', minNativeVersion: '1.0.1' });
+      const s = setup({ plugin });
+      if (check) await s.check();
+      return s;
+    }
+
+    it('success: download then set with returned bundle, removes listener', async () => {
+      const s = await ready();
+      await s.apply();
+      expect(plugin.download).toHaveBeenCalledWith({ url: 'https://x/1.0.6.zip', version: '1.0.6' });
+      expect(plugin.set).toHaveBeenCalledWith({ id: 'b1', version: '1.0.6' });
+      expect(plugin.download).toHaveBeenCalledBefore(plugin.set);
+      expect(remove).toHaveBeenCalled();
+      expect(s.error$.value).toBeNull();
+    });
+    it('does nothing unless state is available', async () => {
+      const s = await ready(false);
+      await s.apply();
+      expect(plugin.download).not.toHaveBeenCalled();
+    });
+    it('failure: sets error, no set, progress null, listener removed', async () => {
+      const s = await ready();
+      plugin.download.and.rejectWith(new Error('boom'));
+      await s.apply();
+      expect(s.error$.value).toBe('Update failed, try again');
+      expect(plugin.set).not.toHaveBeenCalled();
+      expect(s.progress$.value).toBeNull();
+      expect(remove).toHaveBeenCalled();
+    });
+    it('set failure also reports error', async () => {
+      const s = await ready();
+      plugin.set.and.rejectWith(new Error('x'));
+      await s.apply();
+      expect(s.error$.value).toBe('Update failed, try again');
+    });
+    it('second call during a download is ignored', async () => {
+      const s = await ready();
+      let finish!: (b: unknown) => void;
+      plugin.download.and.returnValue(new Promise(r => { finish = r; }));
+      const first = s.apply();
+      await new Promise(r => setTimeout(r));
+      await s.apply();
+      expect(plugin.download).toHaveBeenCalledTimes(1);
+      finish({ id: 'b1' });
+      await first;
+    });
+    it('progress events propagate and start at 0', async () => {
+      const s = await ready();
+      let finish!: (b: unknown) => void;
+      plugin.download.and.returnValue(new Promise(r => { finish = r; }));
+      const p = s.apply();
+      await new Promise(r => setTimeout(r));
+      expect(s.progress$.value).toBe(0);
+      onDownload({ percent: 42 });
+      expect(s.progress$.value).toBe(42);
+      finish({ id: 'b1' });
+      await p;
+    });
+    it('clears previous error on retry', async () => {
+      const s = await ready();
+      plugin.download.and.rejectWith(new Error('boom'));
+      await s.apply();
+      plugin.download.and.resolveTo({ id: 'b1' });
+      await s.apply();
+      expect(s.error$.value).toBeNull();
+    });
   });
 });

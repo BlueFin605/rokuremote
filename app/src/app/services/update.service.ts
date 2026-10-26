@@ -1,5 +1,6 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
 import { CapacitorHttp } from '@capacitor/core';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { BehaviorSubject } from 'rxjs';
 import { APP_VERSION } from '../version';
 import { NativeInfoService } from './native-info.service';
@@ -25,15 +26,56 @@ export const INSTALLED_VERSION = new InjectionToken<string>('INSTALLED_VERSION',
   factory: () => APP_VERSION,
 });
 
+export interface UpdaterBundle { id: string; version?: string }
+export interface UpdaterPlugin {
+  download(opts: { url: string; version: string }): Promise<UpdaterBundle>;
+  set(bundle: UpdaterBundle): Promise<void>;
+  notifyAppReady(): Promise<unknown>;
+  addListener(event: 'download', cb: (e: { percent: number }) => void): Promise<{ remove(): Promise<void> }>;
+}
+
+/** Seam over CapacitorUpdater (thin wrapper: the plugin proxy cannot be spied on and must not be DI-probed). */
+export const UPDATER_PLUGIN = new InjectionToken<UpdaterPlugin>('UPDATER_PLUGIN', {
+  providedIn: 'root',
+  factory: () => ({
+    download: (o) => CapacitorUpdater.download(o),
+    set: (b) => CapacitorUpdater.set(b),
+    notifyAppReady: () => CapacitorUpdater.notifyAppReady(),
+    addListener: (e, cb) => CapacitorUpdater.addListener(e, cb),
+  }),
+});
+
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
   private readonly http = inject(HTTP_GET);
   private readonly native = inject(NativeInfoService);
   private readonly installed = inject(INSTALLED_VERSION);
+  private readonly updater = inject(UPDATER_PLUGIN);
 
   latest: LatestBundle | null = null;
   state: UpdateState = 'none';
   readonly changes$ = new BehaviorSubject<UpdateState>('none');
+
+  readonly progress$ = new BehaviorSubject<number | null>(null);
+  readonly error$ = new BehaviorSubject<string | null>(null);
+
+  async apply(): Promise<void> {
+    if (this.state !== 'available' || !this.latest || this.progress$.value !== null) return;
+    const latest = this.latest;
+    this.error$.next(null);
+    this.progress$.next(0);
+    let listener: { remove(): Promise<void> } | null = null;
+    try {
+      listener = await this.updater.addListener('download', e => this.progress$.next(e.percent));
+      const bundle = await this.updater.download({ url: latest.url, version: latest.version });
+      await this.updater.set(bundle);
+    } catch {
+      this.error$.next('Update failed, try again');
+    } finally {
+      this.progress$.next(null);
+      try { await listener?.remove(); } catch { /* ignore */ }
+    }
+  }
 
   async check(): Promise<void> {
     if (!this.native.isNative) return;
