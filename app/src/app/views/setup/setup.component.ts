@@ -1,19 +1,13 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Capacitor } from '@capacitor/core';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { SavedRoku } from '../../services/saved-roku';
 import { RokuService, RokuDeviceInfo } from '../../services/roku.service';
 import { ProxyService, ProxyDevice } from '../../services/proxy.service';
+import { APP_VERSION } from '../../version';
 import { TvService, TvType, DiscoveredTv } from '../../services/tv.service';
-
-interface BuildVersionInfo {
-  gitRefName?: string;
-  gitSha?: string;
-  firmwareVersion?: string;
-}
 
 @Component({
   selector: 'app-setup',
@@ -24,6 +18,7 @@ interface BuildVersionInfo {
 })
 export class SetupComponent implements OnInit, OnDestroy {
   readonly androidApkUrl = 'https://roku.bluefin605.com/android/latest/roku-remote.apk';
+  readonly appVersion = APP_VERSION;
   readonly isNativeApp = Capacitor.isNativePlatform();
   readonly isAndroidBrowser = !Capacitor.isNativePlatform() && /Android/i.test(navigator.userAgent);
 
@@ -53,7 +48,6 @@ export class SetupComponent implements OnInit, OnDestroy {
   tvPairingRequired = false;
   tvDiscovering = false;
   discoveredTvs: DiscoveredTv[] = [];
-  siteVersion: BuildVersionInfo | null = null;
 
   formRokuId: string | null = null;
   editingId: string | null = null;
@@ -66,7 +60,6 @@ export class SetupComponent implements OnInit, OnDestroy {
 
   constructor(
     public roku: RokuService,
-    private http: HttpClient,
     public proxy: ProxyService,
     private tv: TvService,
     private router: Router,
@@ -83,7 +76,6 @@ export class SetupComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    void this.loadSiteVersion();
     this.loadRebootDelaySettings();
 
     this.syncFromActive();
@@ -303,19 +295,6 @@ export class SetupComponent implements OnInit, OnDestroy {
     this.router.navigate(['/versions']);
   }
 
-  githubVersionLabel(): string {
-    const info = this.siteVersion;
-    if (!info) return 'unknown';
-    if (info.firmwareVersion) return info.firmwareVersion;
-
-    const ref = info.gitRefName?.trim();
-    const sha = info.gitSha?.trim();
-    if (ref && sha) return `${ref}@${sha.slice(0, 7)}`;
-    if (ref) return ref;
-    if (sha) return sha.slice(0, 7);
-    return 'unknown';
-  }
-
   clearTvSettings(): void {
     this.tvType = 'none';
     this.tvIpAddress = '';
@@ -330,15 +309,5 @@ export class SetupComponent implements OnInit, OnDestroy {
     const delays = this.roku.getRebootDelays();
     this.rebootShortDelayMs = delays.shortMs;
     this.rebootLongDelayMs = delays.longMs;
-  }
-
-  private async loadSiteVersion(): Promise<void> {
-    try {
-      this.siteVersion = await firstValueFrom(
-        this.http.get<BuildVersionInfo>(`/version.json?t=${Date.now()}`),
-      );
-    } catch {
-      this.siteVersion = null;
-    }
   }
 }

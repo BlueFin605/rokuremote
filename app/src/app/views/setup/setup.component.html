@@ -12,7 +12,6 @@
   }
 
   <h1>RokuRemote</h1>
-  <p class="build-meta">GitHub Version: {{ githubVersionLabel() }}</p>
 
   @if (isAndroidBrowser) {
     <div class="android-card" data-testid="android-card">
@@ -258,4 +257,6 @@
   @if (!isNativeApp && !isAndroidBrowser) {
     <p class="hint"><a data-testid="android-link" [href]="androidApkUrl">Android app (APK)</a></p>
   }
+
+  <p class="app-version" data-testid="app-version">v{{ appVersion }}</p>
 </div>

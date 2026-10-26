@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core';
 import { SetupComponent } from './setup.component';
 import { RokuService } from '../../services/roku.service';
 import { routes } from '../../app.routes';
+import { APP_VERSION } from '../../version';
 
 describe('SetupComponent', () => {
   let component: SetupComponent;
@@ -32,6 +33,11 @@ describe('SetupComponent', () => {
     httpMock.match(r => r.url === 'http://roku-proxy/api/status').forEach(r => r.flush('', { status: 0, statusText: '' }));
     httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     httpMock.verify();
+  });
+
+  it('shows the app version in the footer', () => {
+    const el: HTMLElement = fixture.nativeElement.querySelector('[data-testid=app-version]');
+    expect(el.textContent?.trim()).toBe('v' + APP_VERSION);
   });
 
   it('should create', () => {
