@@ -1,17 +1,13 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function connectToMock(page: Page) {
-  await page.goto('/');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/setup');
-  await page.fill('input#ip', 'localhost');
-  await page.click('button:has-text("Connect")');
-  await expect(page.locator('.dpad-btn.ok')).toBeVisible({ timeout: 5000 });
-}
+import { test, expect } from '@playwright/test';
+import { routeRokuToMock, routeTvOk, seedRoku } from './helpers';
 
 test.describe('Remote Control', () => {
   test.beforeEach(async ({ page }) => {
-    await connectToMock(page);
+    await routeRokuToMock(page);
+    await routeTvOk(page);
+    await seedRoku(page);
+    await page.goto('/remote');
+    await expect(page.locator('.dpad-btn.ok')).toBeVisible({ timeout: 5000 });
   });
 
   test('should display all remote buttons', async ({ page }) => {

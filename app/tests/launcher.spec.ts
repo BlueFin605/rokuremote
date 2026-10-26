@@ -1,11 +1,9 @@
 import { test, expect, Page } from '@playwright/test';
+import { routeRokuToMock, routeTvOk, seedRoku } from './helpers';
 
 async function navigateToApps(page: Page) {
-  await page.goto('/');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/setup');
-  await page.fill('input#ip', 'localhost');
-  await page.click('button:has-text("Connect")');
+  await seedRoku(page);
+  await page.goto('/remote');
   await expect(page.locator('.dpad-btn.ok')).toBeVisible({ timeout: 5000 });
   await page.click('button:has-text("Apps")');
   await expect(page).toHaveURL(/\/apps/);
@@ -13,6 +11,8 @@ async function navigateToApps(page: Page) {
 
 test.describe('App Launcher', () => {
   test.beforeEach(async ({ page }) => {
+    await routeRokuToMock(page);
+    await routeTvOk(page);
     await navigateToApps(page);
   });
 
