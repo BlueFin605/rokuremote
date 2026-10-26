@@ -7,6 +7,7 @@ import { SetupComponent } from './setup.component';
 import { RokuService } from '../../services/roku.service';
 import { routes } from '../../app.routes';
 import { APP_VERSION } from '../../version';
+import { APP_PLUGIN } from '../../services/native-info.service';
 
 describe('SetupComponent', () => {
   let component: SetupComponent;
@@ -31,7 +32,6 @@ describe('SetupComponent', () => {
   afterEach(() => {
     // Flush proxy status check if still pending
     httpMock.match(r => r.url === 'http://roku-proxy/api/status').forEach(r => r.flush('', { status: 0, statusText: '' }));
-    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     httpMock.verify();
   });
 
@@ -144,7 +144,6 @@ describe('SetupComponent Roku list', () => {
 
   afterEach(() => {
     httpMock.match(r => r.url.includes('/api/status')).forEach(r => r.flush('', { status: 0, statusText: '' }));
-    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     localStorage.clear();
   });
 
@@ -294,7 +293,6 @@ describe('SetupComponent unreachable banner', () => {
 
   afterEach(() => {
     httpMock.match(r => r.url.includes('/api/status')).forEach(r => r.flush('', { status: 0, statusText: '' }));
-    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     localStorage.clear();
   });
 
@@ -389,13 +387,13 @@ describe('SetupComponent Android app download', () => {
   let httpMock: HttpTestingController;
   const apk = 'https://roku.bluefin605.com/android/latest/roku-remote.apk';
 
-  const setup = async (userAgent: string, native = false) => {
+  const setup = async (userAgent: string, native = false, getInfo: jasmine.Spy = jasmine.createSpy('getInfo').and.resolveTo({ version: '0' })) => {
     localStorage.clear();
     spyOnProperty(navigator, 'userAgent', 'get').and.returnValue(userAgent);
     spyOn(Capacitor, 'isNativePlatform').and.returnValue(native);
     await TestBed.configureTestingModule({
       imports: [SetupComponent],
-      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes)],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter(routes), { provide: APP_PLUGIN, useValue: { getInfo } }],
     }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(SetupComponent);
@@ -406,8 +404,24 @@ describe('SetupComponent Android app download', () => {
 
   afterEach(() => {
     httpMock.match(r => r.url.includes('/api/status')).forEach(r => r.flush('', { status: 0, statusText: '' }));
-    httpMock.match(r => r.url.includes('version.json')).forEach(r => r.flush('{}'));
     localStorage.clear();
+  });
+
+  it('shows the native app version in the footer when running natively', async () => {
+    await setup('Mozilla/5.0 (Linux; Android 14; Pixel 8)', true, jasmine.createSpy('getInfo').and.resolveTo({ version: '1.0.12' }));
+    await new Promise(r => setTimeout(r));
+    fixture.detectChanges();
+    const t = el().querySelector('[data-testid=app-version]')!.textContent!;
+    expect(t).toContain('(app 1.0.12)');
+  });
+
+  it('omits the native app version in a browser', async () => {
+    const getInfo = jasmine.createSpy('getInfo');
+    await setup('Mozilla/5.0 (Windows NT 10.0)', false, getInfo);
+    await new Promise(r => setTimeout(r));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid=app-version]')!.textContent).not.toContain('(app');
+    expect(getInfo).not.toHaveBeenCalled();
   });
 
   it('shows the card with the CloudFront apk link on an Android browser, and no footer link', async () => {
@@ -433,7 +447,7 @@ describe('SetupComponent Android app download', () => {
   });
 
   it('shows neither inside the native app', async () => {
-    await setup('Mozilla/5.0 (Linux; Android 14; Pixel 8)', true);
+    await setup('Mozilla/5.0 (Linux; Android 14; Pixel 8)', true, jasmine.createSpy('getInfo').and.resolveTo({ version: '1.0.12' }));
     expect(el().querySelector('[data-testid=android-card]')).toBeNull();
     expect(el().querySelector('[data-testid=android-link]')).toBeNull();
   });

@@ -258,5 +258,5 @@
     <p class="hint"><a data-testid="android-link" [href]="androidApkUrl">Android app (APK)</a></p>
   }
 
-  <p class="app-version" data-testid="app-version">v{{ appVersion }}</p>
+  <p class="app-version" data-testid="app-version">v{{ appVersion }}@if (nativeVersion) { (app {{ nativeVersion }}) }</p>
 </div>
