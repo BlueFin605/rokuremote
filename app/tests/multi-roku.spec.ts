@@ -30,19 +30,32 @@ async function routeRokuToMock(page: Page) {
   });
 }
 
-async function addRoku(page: Page, ip: string) {
-  await page.goto('/setup');
-  // The button only exists once at least one Roku is saved; don't wait on it otherwise.
-  const addAnother = page.locator('button:has-text("Add another Roku")');
-  if (await addAnother.count()) await addAnother.click();
-  await page.fill('input#ip', ip);
-  await page.click('button:has-text("Save / Add")');
-  await expect(page.locator('.roku-status.success')).toBeVisible({ timeout: 5000 });
+async function routeTvOk(page: Page) {
+  await page.route(/\/api\/tv\//, route => route.fulfill({
+    status: 200,
+    headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' },
+    body: JSON.stringify({ volume: 10 }),
+  }));
 }
+
+// Add a Roku through the new-Roku card on /setup (shown as the empty card, or after "Add Roku").
+async function addRoku(page: Page, ip: string, name?: string) {
+  await page.goto('/setup');
+  const addBtn = page.getByTestId('add-roku');
+  if (await addBtn.count()) await addBtn.click();
+  const card = page.getByTestId('new-roku-card');
+  await card.getByTestId('card-roku-ip').fill(ip);
+  if (name) await card.getByTestId('card-name').fill(name);
+  await card.getByTestId('card-save').click();
+  await expect(page.getByTestId('new-roku-card')).toHaveCount(0, { timeout: 5000 });
+}
+
+const storedRokus = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('rokus') || '[]'));
 
 test.describe('Multiple Rokus', () => {
   test.beforeEach(async ({ page }) => {
     await routeRokuToMock(page);
+    await routeTvOk(page);
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
   });
@@ -50,7 +63,53 @@ test.describe('Multiple Rokus', () => {
   test('adds two Rokus and lists both on setup', async ({ page }) => {
     await addRoku(page, 'localhost');
     await addRoku(page, '127.0.0.1');
-    await expect(page.locator('.roku-item')).toHaveCount(2);
+    await expect(page.locator('[data-testid^="roku-card-"]')).toHaveCount(2);
+    expect((await storedRokus(page)).map((r: any) => r.ip)).toEqual(['localhost', '127.0.0.1']);
+  });
+
+  test('edits a Roku name and IP from its card', async ({ page }) => {
+    await addRoku(page, 'localhost');
+    const [r] = await storedRokus(page);
+    await page.goto('/setup');
+    await page.getByTestId(`edit-${r.id}`).click();
+    await page.getByTestId('card-name').fill('Living Room');
+    await page.getByTestId('card-roku-ip').fill('127.0.0.1');
+    await page.getByTestId('card-save').click();
+    const card = page.getByTestId(`roku-card-${r.id}`);
+    await expect(card).toContainText('Living Room');
+    await expect(card).toContainText('127.0.0.1');
+    const [after] = await storedRokus(page);
+    expect(after.name).toBe('Living Room');
+    expect(after.ip).toBe('127.0.0.1');
+  });
+
+  test('cancelling an edit keeps the Roku unchanged', async ({ page }) => {
+    await addRoku(page, 'localhost');
+    const [r] = await storedRokus(page);
+    await page.goto('/setup');
+    await page.getByTestId(`edit-${r.id}`).click();
+    await page.getByTestId('card-name').fill('Should Not Stick');
+    await page.getByTestId('card-cancel').click();
+    await expect(page.getByTestId('card-edit')).toHaveCount(0);
+    await expect(page.getByTestId(`roku-card-${r.id}`)).not.toContainText('Should Not Stick');
+    const [after] = await storedRokus(page);
+    expect(after.name).toBe(r.name);
+  });
+
+  test('sets a Panasonic TV on a Roku card and shows it in the TV row', async ({ page }) => {
+    await addRoku(page, 'localhost');
+    const [r] = await storedRokus(page);
+    await page.goto('/setup');
+    const card = page.getByTestId(`roku-card-${r.id}`);
+    await expect(card).toContainText('No TV');
+    await page.getByTestId(`edit-${r.id}`).click();
+    await page.getByTestId('card-tv-type').selectOption('panasonic');
+    await page.getByTestId('card-tv-ip').fill('192.168.1.50');
+    await page.getByTestId('card-save').click();
+    await expect(page.getByTestId('card-edit')).toHaveCount(0, { timeout: 5000 });
+    await expect(card).toContainText('Panasonic Viera 192.168.1.50');
+    const [after] = await storedRokus(page);
+    expect(after.tv).toEqual({ type: 'panasonic', ip: '192.168.1.50' });
   });
 
   test('switches Roku from the header dropdown', async ({ page }) => {
