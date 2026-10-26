@@ -1,0 +1,14 @@
+@if (state !== 'none') {
+  <div class="update" [class.banner]="compact">
+    @if (state === 'available') {
+      <button data-testid="update-button" (click)="apply()" [disabled]="progress !== null">
+        @if (progress !== null) { Updating {{ progress }}% } @else { Update to v{{ version }} }
+      </button>
+    } @else {
+      <a data-testid="update-apk" [href]="apkUrl">Download new APK</a>
+    }
+    @if (error) {
+      <span class="update-error" data-testid="update-error">{{ error }}</span>
+    }
+  </div>
+}

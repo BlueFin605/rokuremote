@@ -1,14 +1,16 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ElementRef, ViewChild } from '@angular/core';
 import { RokuSwitcherComponent } from '../../components/roku-switcher/roku-switcher.component';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { RokuService, RokuKey } from '../../services/roku.service';
 import { TvService, TvAction } from '../../services/tv.service';
+import { UpdateService } from '../../services/update.service';
+import { UpdateButtonComponent } from '../../components/update-button/update-button.component';
 
 @Component({
   selector: 'app-remote',
-  imports: [FormsModule, RokuSwitcherComponent],
+  imports: [FormsModule, RokuSwitcherComponent, UpdateButtonComponent],
   templateUrl: './remote.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './remote.component.scss'
@@ -16,10 +18,40 @@ import { TvService, TvAction } from '../../services/tv.service';
 export class RemoteComponent implements OnInit, OnDestroy {
   textInput = '';
   disconnected = false;
+  private confirmTarget: { id: string; name: string } | null = null;
   tvError = false;
   private volumeRepeatTimer: ReturnType<typeof setInterval> | null = null;
+  @ViewChild('noBtn') noButton?: ElementRef<HTMLButtonElement>;
   private subs: Subscription[] = [];
   private audioCtx: AudioContext | null = null;
+
+  /** The confirm strip is open only while its target is still the active Roku. */
+  get confirmingDisconnect(): boolean {
+    return !!this.confirmTarget && this.confirmTarget.id === this.roku.activeRoku?.id;
+  }
+
+  get confirmName(): string {
+    return this.confirmTarget?.name ?? '';
+  }
+
+  askDisconnect(): void {
+    const active = this.roku.activeRoku;
+    if (!active) return;
+    this.confirmTarget = { id: active.id, name: active.name };
+    setTimeout(() => this.noButton?.nativeElement.focus());
+  }
+
+  cancelDisconnect(): void {
+    this.confirmTarget = null;
+  }
+
+  confirmDisconnectYes(): void {
+    const target = this.confirmTarget;
+    this.confirmTarget = null;
+    if (!target) return;
+    this.roku.removeRoku(target.id);
+    this.router.navigate(['/setup']);
+  }
 
   get ecpEnabled(): boolean {
     return this.roku.ecpEnabled;
@@ -33,9 +65,11 @@ export class RemoteComponent implements OnInit, OnDestroy {
     private roku: RokuService,
     private tv: TvService,
     private router: Router,
+    private update: UpdateService,
   ) {}
 
   ngOnInit(): void {
+    void this.update.check();
     this.subs.push(
       this.roku.connectionLost$.subscribe(() => {
         this.disconnected = true;
@@ -158,8 +192,4 @@ export class RemoteComponent implements OnInit, OnDestroy {
     this.router.navigate(['/setup']);
   }
 
-  disconnect(): void {
-    this.roku.disconnect();
-    this.router.navigate(['/setup']);
-  }
 }

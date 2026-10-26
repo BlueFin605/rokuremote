@@ -1,0 +1,77 @@
+:host { display: block; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #2d2d44;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #fff;
+
+  &.active { border-color: #6c2dc7; }
+  &.unreachable { opacity: 0.7; }
+}
+
+.head { display: flex; align-items: center; gap: 0.5rem; }
+.name { font-weight: 600; flex: 1; }
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #6c2dc7;
+  &.warn { background: #b45309; }
+}
+
+.row { display: flex; gap: 0.75rem; font-size: 0.9rem; }
+.label { width: 3rem; opacity: 0.6; }
+
+label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; }
+
+input, select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  color: #fff;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+.actions, .confirm { display: flex; align-items: center; gap: 0.5rem; }
+
+button {
+  padding: 0.5rem 0.9rem;
+  color: #fff;
+  background: #3d3d5c;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:disabled { opacity: 0.5; }
+  &.primary, &.discover-btn { background: #6c2dc7; font-weight: 600; }
+  &.danger { background: #a02c2c; }
+}
+
+.discover-btn { width: 100%; padding: 0.6rem; }
+
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  button { width: 100%; text-align: left; }
+  .none { opacity: 0.6; font-size: 0.85rem; }
+}
+
+.error { color: #ff8a8a; font-size: 0.85rem; }
+.warning { color: #f5c26b; font-size: 0.85rem; }
+
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #888;
+}

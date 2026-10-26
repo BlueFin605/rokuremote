@@ -4,11 +4,12 @@ import { RokuSwitcherComponent } from '../../components/roku-switcher/roku-switc
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Router } from '@angular/router';
+import { UpdateButtonComponent } from '../../components/update-button/update-button.component';
 import { RokuService, RokuApp } from '../../services/roku.service';
 
 @Component({
   selector: 'app-launcher',
-  imports: [FormsModule, DragDropModule, RokuSwitcherComponent],
+  imports: [FormsModule, DragDropModule, RokuSwitcherComponent, UpdateButtonComponent],
   templateUrl: './launcher.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './launcher.component.scss'

@@ -1,48 +1,25 @@
-﻿import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
-// The app talks to the Roku through the proxy (default http://roku-proxy/api/roku/<path>?ip=<ip>).
-// That proxy is not running in the test environment, so forward those calls straight to the mock
-// Roku (port 8060) to keep the tests deterministic. Any IP maps to the same mock.
-const MOCK = 'http://localhost:8060';
+import { routeRokuToMock, routeTvOk } from './helpers';
 
-async function routeRokuToMock(page: Page) {
-  await page.route(/\/api\/roku\//, async route => {
-    const url = new URL(route.request().url());
-    const path = url.pathname.replace(/^.*\/api\/roku/, '');
-    let status: number, headers: Record<string, string>, body: Buffer;
-    try {
-      // Read the body up front: fulfilling with the live APIResponse races page navigation,
-      // which disposes it ("Fetch response has been disposed").
-      const response = await route.fetch({ url: `${MOCK}${path}` });
-      status = response.status();
-      headers = { ...response.headers(), 'access-control-allow-origin': '*' };
-      body = await response.body();
-    } catch (e) {
-      // A request cancelled by navigation/teardown is harmless. A mock that is down is not:
-      // fail the request so the test sees the failure.
-      if (/disposed|closed|aborted|Target page|interrupted/i.test(String(e))) return;
-      await route.abort().catch(() => {});
-      return;
-    }
-    await route.fulfill({ status, headers, body }).catch(e => {
-      if (!/handled|disposed|closed|aborted|Target page|interrupted|Route is/i.test(String(e))) throw e;
-    });
-  });
-}
-
-async function addRoku(page: Page, ip: string) {
+// Add a Roku through the new-Roku card on /setup (shown as the empty card, or after "Add Roku").
+async function addRoku(page: Page, ip: string, name?: string) {
   await page.goto('/setup');
-  // The button only exists once at least one Roku is saved; don't wait on it otherwise.
-  const addAnother = page.locator('button:has-text("Add another Roku")');
-  if (await addAnother.count()) await addAnother.click();
-  await page.fill('input#ip', ip);
-  await page.click('button:has-text("Save / Add")');
-  await expect(page.locator('.roku-status.success')).toBeVisible({ timeout: 5000 });
+  const addBtn = page.getByTestId('add-roku');
+  if (await addBtn.count()) await addBtn.click();
+  const card = page.getByTestId('new-roku-card');
+  await card.getByTestId('card-roku-ip').fill(ip);
+  if (name) await card.getByTestId('card-name').fill(name);
+  await card.getByTestId('card-save').click();
+  await expect(page.getByTestId('new-roku-card')).toHaveCount(0, { timeout: 5000 });
 }
+
+const storedRokus = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('rokus') || '[]'));
 
 test.describe('Multiple Rokus', () => {
   test.beforeEach(async ({ page }) => {
     await routeRokuToMock(page);
+    await routeTvOk(page);
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
   });
@@ -50,7 +27,53 @@ test.describe('Multiple Rokus', () => {
   test('adds two Rokus and lists both on setup', async ({ page }) => {
     await addRoku(page, 'localhost');
     await addRoku(page, '127.0.0.1');
-    await expect(page.locator('.roku-item')).toHaveCount(2);
+    await expect(page.locator('[data-testid^="roku-card-"]')).toHaveCount(2);
+    expect((await storedRokus(page)).map((r: any) => r.ip)).toEqual(['localhost', '127.0.0.1']);
+  });
+
+  test('edits a Roku name and IP from its card', async ({ page }) => {
+    await addRoku(page, 'localhost');
+    const [r] = await storedRokus(page);
+    await page.goto('/setup');
+    await page.getByTestId(`edit-${r.id}`).click();
+    await page.getByTestId('card-name').fill('Living Room');
+    await page.getByTestId('card-roku-ip').fill('127.0.0.1');
+    await page.getByTestId('card-save').click();
+    const card = page.getByTestId(`roku-card-${r.id}`);
+    await expect(card).toContainText('Living Room');
+    await expect(card).toContainText('127.0.0.1');
+    const [after] = await storedRokus(page);
+    expect(after.name).toBe('Living Room');
+    expect(after.ip).toBe('127.0.0.1');
+  });
+
+  test('cancelling an edit keeps the Roku unchanged', async ({ page }) => {
+    await addRoku(page, 'localhost');
+    const [r] = await storedRokus(page);
+    await page.goto('/setup');
+    await page.getByTestId(`edit-${r.id}`).click();
+    await page.getByTestId('card-name').fill('Should Not Stick');
+    await page.getByTestId('card-cancel').click();
+    await expect(page.getByTestId('card-edit')).toHaveCount(0);
+    await expect(page.getByTestId(`roku-card-${r.id}`)).not.toContainText('Should Not Stick');
+    const [after] = await storedRokus(page);
+    expect(after.name).toBe(r.name);
+  });
+
+  test('sets a Panasonic TV on a Roku card and shows it in the TV row', async ({ page }) => {
+    await addRoku(page, 'localhost');
+    const [r] = await storedRokus(page);
+    await page.goto('/setup');
+    const card = page.getByTestId(`roku-card-${r.id}`);
+    await expect(card).toContainText('No TV');
+    await page.getByTestId(`edit-${r.id}`).click();
+    await page.getByTestId('card-tv-type').selectOption('panasonic');
+    await page.getByTestId('card-tv-ip').fill('192.168.1.50');
+    await page.getByTestId('card-save').click();
+    await expect(page.getByTestId('card-edit')).toHaveCount(0, { timeout: 5000 });
+    await expect(card).toContainText('Panasonic Viera 192.168.1.50');
+    const [after] = await storedRokus(page);
+    expect(after.tv).toEqual({ type: 'panasonic', ip: '192.168.1.50' });
   });
 
   test('switches Roku from the header dropdown', async ({ page }) => {
@@ -67,12 +90,12 @@ test.describe('Multiple Rokus', () => {
     const before = await readActive();
     expect(before.id).toBeTruthy();
 
-    const items = page.locator('app-roku-switcher .menu li');
+    const items = page.locator('app-roku-switcher .menu li button');
     await page.click('app-roku-switcher .current');
     await expect(items).toHaveCount(3); // two Rokus + Manage
-    const activeIndexBefore = await items.evaluateAll(els => els.findIndex(e => e.classList.contains('active')));
+    const activeIndexBefore = await items.evaluateAll(els => els.findIndex(e => e.parentElement!.classList.contains('active')));
     expect(activeIndexBefore).toBeGreaterThanOrEqual(0);
-    await page.locator('app-roku-switcher .menu li:not(.active):not(.manage)').click();
+    await page.locator('app-roku-switcher .menu li:not(.active):not(.manage) button').click();
 
     await expect.poll(async () => (await readActive()).id).not.toBe(before.id);
     const after = await readActive();
@@ -81,7 +104,7 @@ test.describe('Multiple Rokus', () => {
 
     await page.click('app-roku-switcher .current');
     await expect(items).toHaveCount(3);
-    const activeIndexAfter = await items.evaluateAll(els => els.findIndex(e => e.classList.contains('active')));
+    const activeIndexAfter = await items.evaluateAll(els => els.findIndex(e => e.parentElement!.classList.contains('active')));
     expect(activeIndexAfter).toBeGreaterThanOrEqual(0);
     expect(activeIndexAfter).not.toBe(activeIndexBefore);
   });

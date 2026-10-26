@@ -94,6 +94,78 @@ describe('RemoteComponent', () => {
     expect(btn).toBeTruthy();
   });
 
+  describe('disconnect confirmation', () => {
+    const btnByText = (t: string) => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find(b => b.textContent?.trim() === t) as HTMLButtonElement | undefined;
+
+    it('single tap asks for confirmation and does not remove', () => {
+      const spy = spyOn(component['roku'], 'removeRoku');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      expect(spy).not.toHaveBeenCalled();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')!.textContent).toContain('Remove');
+      expect(btnByText('Yes')).toBeTruthy();
+      expect(btnByText('No')).toBeTruthy();
+    });
+
+    it('Yes removes the active Roku', () => {
+      const spy = spyOn(component['roku'], 'removeRoku');
+      const nav = spyOn(component['router'], 'navigate');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      btnByText('Yes')!.click();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(nav).toHaveBeenCalledWith(['/setup']);
+    });
+
+    const fakeRoku = (id: string, name: string) => ({ id, name, ip: '1.1.1.1', tv: { type: 'none', ip: null } }) as any;
+
+    it('Yes removes the Roku that was targeted when the strip opened, even if the active one changed', () => {
+      let current = fakeRoku('a', 'Lounge');
+      spyOnProperty(component['roku'], 'activeRoku', 'get').and.callFake(() => current);
+      const spy = spyOn(component['roku'], 'removeRoku');
+      spyOn(component['router'], 'navigate');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      component.confirmDisconnectYes();
+      expect(spy).toHaveBeenCalledOnceWith('a');
+      current = fakeRoku('b', 'Bedroom');
+    });
+
+    it('closes the strip when the active Roku changes', () => {
+      let current = fakeRoku('a', 'Lounge');
+      spyOnProperty(component['roku'], 'activeRoku', 'get').and.callFake(() => current);
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')).toBeTruthy();
+      current = fakeRoku('b', 'Bedroom');
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')).toBeNull();
+    });
+
+    it('strip is an accessible group and focuses No when opened', fakeAsync(() => {
+      spyOnProperty(component['roku'], 'activeRoku', 'get').and.returnValue(fakeRoku('a', 'Lounge'));
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      const strip = (fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')!;
+      expect(strip.getAttribute('role')).toBe('group');
+      expect(strip.getAttribute('aria-label')).toBe('Confirm removing Lounge');
+      tick();
+      expect(document.activeElement).toBe(btnByText('No')!);
+    }));
+
+    it('No cancels', () => {
+      const spy = spyOn(component['roku'], 'removeRoku');
+      btnByText('Disconnect')!.click();
+      fixture.detectChanges();
+      btnByText('No')!.click();
+      fixture.detectChanges();
+      expect(spy).not.toHaveBeenCalled();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid=disconnect-confirm]')).toBeNull();
+      expect(btnByText('Disconnect')).toBeTruthy();
+    });
+  });
+
   it('should have a private listening button', () => {
     const el: HTMLElement = fixture.nativeElement;
     const btn = Array.from(el.querySelectorAll('button'))

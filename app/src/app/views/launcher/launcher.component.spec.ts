@@ -44,6 +44,11 @@ describe('LauncherComponent', () => {
     fixture.detectChanges();
   }
 
+  it('shows the compact update button', () => {
+    flushApps();
+    expect(fixture.nativeElement.querySelector('app-update-button')).toBeTruthy();
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
     flushApps();

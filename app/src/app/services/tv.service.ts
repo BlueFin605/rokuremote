@@ -44,8 +44,6 @@ export class TvService {
   get type(): TvType { return this.roku.activeRoku?.tv.type ?? 'none'; }
   get ip(): string | null { return this.roku.activeRoku?.tv.ip ?? null; }
 
-  configure(type: TvType, ip: string | null): void { this.roku.setActiveTv(type, ip); }
-
   command(action: TvAction): void {
     this.commandQueue.next(action);
   }
@@ -64,11 +62,11 @@ export class TvService {
     );
   }
 
-  testConnection(): Observable<{ ok: boolean; pairingRequired?: boolean }> {
+  test(type: TvType, ip: string): Observable<{ ok: boolean; pairingRequired?: boolean }> {
     if (this.demoMode.enabled) {
       return of({ ok: true }).pipe(delay(TvService.MOCK_DELAY_MS));
     }
-    return this.http.get<{ volume: number }>(this.tvUrl('volume')).pipe(
+    return this.http.get<{ volume: number }>(this.tvUrl('volume', type, ip)).pipe(
       timeout(TvService.TIMEOUT_MS),
       map(() => ({ ok: true })),
       catchError(err => {
@@ -103,11 +101,11 @@ export class TvService {
     );
   }
 
-  private tvUrl(path: string): string {
+  private tvUrl(path: string, type: TvType = this.type, ip: string | null = this.ip): string {
     const base = this.proxy.getProxyUrl()
       ? `${this.proxy.getProxyUrl()}/api`
       : '/api';
-    return `${base}/tv/${path}?ip=${this.ip}&type=${this.type}`;
+    return `${base}/tv/${path}?ip=${ip}&type=${type}`;
   }
 
   private initCommandQueue(): void {

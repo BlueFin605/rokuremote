@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { RokuService } from '../../services/roku.service';
 import { AudioPlayerService } from '../../services/audio-player.service';
@@ -12,7 +12,20 @@ import { ProxyService } from '../../services/proxy.service';
 })
 export class RokuSwitcherComponent {
   open = false;
-  constructor(public roku: RokuService, private audioPlayer: AudioPlayerService, private proxy: ProxyService, private router: Router) {}
+  @ViewChild('trigger') private trigger?: ElementRef<HTMLElement>;
+  constructor(public roku: RokuService, private audioPlayer: AudioPlayerService, private proxy: ProxyService, private router: Router, private host: ElementRef<HTMLElement>) {}
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(e: Event): void {
+    if (this.open && !this.host.nativeElement.contains(e.target as Node)) this.open = false;
+  }
+
+  @HostListener('keydown.escape')
+  onEscape(): void {
+    if (!this.open) return;
+    this.open = false;
+    this.trigger?.nativeElement.focus();
+  }
 
   toggle(): void { this.open = !this.open; }
 

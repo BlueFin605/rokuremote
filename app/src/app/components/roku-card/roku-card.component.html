@@ -1,0 +1,68 @@
+@if (!editing) {
+  <div class="card" [class.active]="active" [class.unreachable]="unreachable" [attr.data-testid]="'roku-card-' + roku?.id">
+    <div class="head">
+      <span class="name">{{ roku?.name }}</span>
+      @if (active) { <span class="badge">Active</span> }
+      @if (unreachable) { <span class="badge warn">Unreachable</span> }
+    </div>
+    <div class="row"><span class="label">Roku</span><span>{{ roku?.ip }}</span></div>
+    <div class="row"><span class="label">TV</span><span>{{ tvLabel }}</span></div>
+    @if (warning) { <div class="warning" data-testid="card-warning">{{ warning }}</div> }
+    @if (confirmingDelete) {
+      <div class="confirm">
+        <span>Delete?</span>
+        <button type="button" class="danger" [attr.data-testid]="'delete-yes-' + roku?.id" (click)="confirmDelete()">Yes</button>
+        <button type="button" [attr.data-testid]="'delete-no-' + roku?.id" (click)="confirmingDelete = false">No</button>
+      </div>
+    } @else {
+      <div class="actions">
+        <button type="button" class="primary" [attr.data-testid]="'use-' + roku?.id" (click)="roku && use.emit(roku.id)">Use</button>
+        <button type="button" [attr.data-testid]="'edit-' + roku?.id" [disabled]="editLocked" (click)="startEdit()">Edit</button>
+        <button type="button" class="danger" [attr.data-testid]="'delete-' + roku?.id" (click)="confirmingDelete = true">Delete</button>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="card editing" data-testid="card-edit">
+    <label>Name
+      <input data-testid="card-name" [(ngModel)]="draft.name" [disabled]="saving" (keydown.enter)="submit()" />
+    </label>
+    <label>Roku IP
+      <input data-testid="card-roku-ip" [(ngModel)]="draft.ip" [disabled]="saving" (keydown.enter)="submit()" />
+    </label>
+    <p class="hint">Find your Roku's IP at: Settings &gt; Network &gt; About</p>
+    <label>TV type
+      <select data-testid="card-tv-type" [ngModel]="draft.tvType" (ngModelChange)="onTypeChange($event)" [disabled]="saving">
+        <option value="none">None</option>
+        <option value="panasonic">Panasonic Viera</option>
+      </select>
+    </label>
+    @if (draft.tvType !== 'none') {
+      <label>TV IP
+        <input data-testid="card-tv-ip" [(ngModel)]="draft.tvIp" [disabled]="saving" (keydown.enter)="submit()" />
+      </label>
+      @if (proxyAvailable) {
+        <button type="button" class="discover-btn" data-testid="card-discover-tv" [disabled]="saving || discovering" (click)="discoverTvs()">
+          {{ discovering ? 'Searching...' : 'Discover TVs' }}
+        </button>
+        @if (discovered) {
+          <ul class="results">
+            @for (t of discovered; track t.ip; let i = $index) {
+              <li><button type="button" [attr.data-testid]="'card-tv-result-' + i" (click)="pickTv(t)">{{ t.name }} {{ t.ip }}</button></li>
+            } @empty {
+              <li class="none">No TVs found</li>
+            }
+          </ul>
+        }
+      }
+    }
+    @if (error) { <div class="error" data-testid="card-error" [attr.data-stage]="error.stage">{{ error.message }}</div> }
+    @if (error?.kind === 'limited-mode') {
+      <p class="hint" data-testid="card-limited-steps">Enable external control: Settings &gt; System &gt; Advanced System Settings &gt; Control by Mobile Apps &gt; Network Access &gt; Enabled</p>
+    }
+    <div class="actions">
+      <button type="button" class="primary" data-testid="card-save" [disabled]="saving" (click)="submit()">{{ saving ? 'Saving...' : 'Save' }}</button>
+      <button type="button" data-testid="card-cancel" (click)="cancel()">Cancel</button>
+    </div>
+  </div>
+}
