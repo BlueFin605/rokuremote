@@ -63,12 +63,16 @@ An Android app wraps the web app, because Chrome on Android only installs PWAs f
 2. Allow your browser to install apps from this source when prompted.
 3. Open the downloaded file and install it.
 
-To update, install the new APK over the old one (every published build is signed with the same key; debug builds use the debug key).
+Web-layer updates arrive in-app via the **Update** button. When a new APK is needed, install it over the old one (every published build is signed with the same key; debug builds use the debug key).
 
 ### Maintainers
 
 - **CI:** the `build-android` job in `.github/workflows/build.yml` builds a debug APK artifact on PRs and pushes to master. The manual `Deploy RokuRemote` workflow in the Home repo builds the signed release APK (version code = the Actions run number) and publishes it to S3/CloudFront at `/android/latest/roku-remote.apk` (master), `/android/<version>/roku-remote.apk`, and `/android/branches/<branch>/roku-remote.apk` for other refs.
 - **Signing secrets** (Home repo): `ROKUREMOTE_ANDROID_KEYSTORE_BASE64`, `ROKUREMOTE_ANDROID_KEYSTORE_PASSWORD`, `ROKUREMOTE_ANDROID_KEY_ALIAS`, `ROKUREMOTE_ANDROID_KEY_PASSWORD`. Keep the keystore safe and backed up: Android only updates an installed app in place when every build uses the same key.
+- **Publishing an OTA update:** a master run of `Deploy RokuRemote` also zips the web build and publishes `/android/bundles/<version>.zip` plus `/android/bundles/latest.json` (`{version, url, minNativeVersion}`). Installed apps check `latest.json` when the setup or remote screen opens and show an **Update to vX** button; tapping it downloads and applies the bundle with no new APK. Non-master runs don't publish a bundle.
+- **`minNativeVersion`:** comes from `app/ota-min-native-version.txt` (minimum APK build number, published as `1.0.<n>`). Leave it unchanged normally; raise it to the current run number only when a bundle needs native code newer than already-installed APKs. Older APKs then see **Download new APK** instead of Update.
+- **Testing an update:** install an APK, publish a newer build, reopen the app and confirm the Update button appears and the footer version changes after applying. The footer reads `v<bundle version> (app <APK version>)`; local builds show `vdev`.
+- **One-time requirement:** the installed APK must already contain the updater plugin. APKs built before OTA shipped can't update themselves; install one fresh APK once, and later changes arrive over the air.
 - **Local build (optional):** needs JDK 21 and the Android SDK.
 
 ```bash

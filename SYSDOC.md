@@ -25,6 +25,17 @@ between them from a header dropdown, and opens straight to the apps screen
 (or the remote when ECP is limited). If the active Roku is unreachable, setup
 opens with a "Couldn't reach <name> (<ip>)" banner.
 
+Setup lists one card per saved Roku (`roku-card` component): name, Roku IP and
+TV, with Use, Edit and Delete. Edit expands the card in place (name, Roku IP,
+TV type/IP, TV discovery when a proxy is available); Save validates and
+connects via `roku-config.service.ts` (Roku first, then the TV) and shows
+errors on the card. "Add Roku" shows an empty card in the same form.
+
+The setup footer shows `v<APP_VERSION>` plus `(app <APK version>)` when
+running natively. `APP_VERSION` is a build-time constant in
+`app/src/app/version.ts` (`dev` locally), stamped as `1.0.<run number>` by
+`app/scripts/set-version.mjs` before each CI Angular build.
+
 ## Where things are
 
 - `app/` — Angular web app (the browser UI).
@@ -37,6 +48,18 @@ opens with a "Couldn't reach <name> (<ip>)" banner.
   published to `/android/latest/roku-remote.apk` on the site (S3 +
   CloudFront); the setup screen links to it. PR/push CI
   (`.github/workflows/build.yml`) builds a debug APK artifact.
+  **Over-the-air updates:** the app embeds `@capgo/capacitor-updater` in
+  manual mode (`autoUpdate: false` in `capacitor.config.ts`), so web-layer
+  changes ship without a new APK. The deploy workflow zips the built web app
+  to `/android/bundles/<version>.zip` and writes
+  `/android/bundles/latest.json` (`version`, `url`, `minNativeVersion`; not
+  cached). `update.service.ts` fetches it when setup or remote loads; if its
+  version is newer than `APP_VERSION` the Update button appears
+  (`update-button` component: download with progress, then switch bundle). If
+  the installed APK's version is below `minNativeVersion` it shows "Download
+  new APK" instead. `app/ota-min-native-version.txt` holds the minimum APK
+  build number for the next bundle (published as `1.0.<n>`); raise it only
+  when a bundle needs native code newer than existing APKs.
 - `proxy/` — C++ desktop proxy; shared source for the ESP32 build.
 - `esp32/` — ESP-IDF project that builds the same proxy for an ESP32
   microcontroller (`esp32-tool.ps1` in the repo root flashes it).
