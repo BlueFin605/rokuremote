@@ -7,18 +7,21 @@ import { SavedRoku } from '../../services/saved-roku';
 import { RokuService, RokuDeviceInfo } from '../../services/roku.service';
 import { ProxyService, ProxyDevice } from '../../services/proxy.service';
 import { APP_VERSION } from '../../version';
+import { ANDROID_APK_URL } from '../../services/android-links';
+import { UpdateService } from '../../services/update.service';
+import { UpdateButtonComponent } from '../../components/update-button/update-button.component';
 import { NativeInfoService } from '../../services/native-info.service';
 import { TvService, TvType, DiscoveredTv } from '../../services/tv.service';
 
 @Component({
   selector: 'app-setup',
-  imports: [FormsModule],
+  imports: [FormsModule, UpdateButtonComponent],
   templateUrl: './setup.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './setup.component.scss'
 })
 export class SetupComponent implements OnInit, OnDestroy {
-  readonly androidApkUrl = 'https://roku.bluefin605.com/android/latest/roku-remote.apk';
+  readonly androidApkUrl = ANDROID_APK_URL;
   readonly appVersion = APP_VERSION;
   nativeVersion: string | null = null;
   readonly isNativeApp = Capacitor.isNativePlatform();
@@ -66,6 +69,7 @@ export class SetupComponent implements OnInit, OnDestroy {
     private tv: TvService,
     private router: Router,
     private nativeInfo: NativeInfoService,
+    private update: UpdateService,
   ) {
     this.proxyUrl = proxy.getProxyUrl();
     this.tvType = tv.type;
@@ -79,6 +83,7 @@ export class SetupComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    void this.update.check();
     void this.nativeInfo.getAppVersion().then(v => { this.nativeVersion = v; });
     this.loadRebootDelaySettings();
 

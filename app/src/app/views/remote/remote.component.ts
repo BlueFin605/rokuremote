@@ -5,10 +5,12 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { RokuService, RokuKey } from '../../services/roku.service';
 import { TvService, TvAction } from '../../services/tv.service';
+import { UpdateService } from '../../services/update.service';
+import { UpdateButtonComponent } from '../../components/update-button/update-button.component';
 
 @Component({
   selector: 'app-remote',
-  imports: [FormsModule, RokuSwitcherComponent],
+  imports: [FormsModule, RokuSwitcherComponent, UpdateButtonComponent],
   templateUrl: './remote.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './remote.component.scss'
@@ -33,9 +35,11 @@ export class RemoteComponent implements OnInit, OnDestroy {
     private roku: RokuService,
     private tv: TvService,
     private router: Router,
+    private update: UpdateService,
   ) {}
 
   ngOnInit(): void {
+    void this.update.check();
     this.subs.push(
       this.roku.connectionLost$.subscribe(() => {
         this.disconnected = true;
