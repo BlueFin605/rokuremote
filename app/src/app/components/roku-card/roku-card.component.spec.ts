@@ -159,6 +159,19 @@ describe('RokuCardComponent', () => {
     });
   }
 
+  it('adopts the id of a Roku created before a TV-stage failure so a retry is an edit', async () => {
+    save.and.rejectWith(new SaveError('tv', 'Could not reach the TV', undefined, 'created-1'));
+    create({ roku: null, prefill: { ip: '192.168.1.99', name: 'Kitchen' } });
+    click('card-save');
+    await flush();
+    expect(fixture.componentInstance.draft.id).toBe('created-1');
+    save.and.resolveTo({ id: 'created-1', tvStatus: 'ok' } as SaveResult);
+    click('card-save');
+    await flush();
+    expect(save.calls.mostRecent().args[0].id).toBe('created-1');
+    expect(q('card-edit')).toBeNull();
+  });
+
   it('limited-mode error shows the enable steps, other errors do not', async () => {
     save.and.rejectWith(new SaveError('roku', 'Limited', 'limited-mode'));
     create();

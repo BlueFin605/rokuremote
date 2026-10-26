@@ -149,6 +149,25 @@ describe('RokuConfigService.save', () => {
     expect(tv.test).not.toHaveBeenCalled();
   });
 
+  it('empty TV ip on a new card is rejected before the Roku is connected', async () => {
+    const err = await svc.save(draft({ id: null, ip: '10.0.0.5', tvType: 'panasonic', tvIp: ' ' })).catch(e => e);
+    expect(err.stage).toBe('tv');
+    expect(err.message).toBe('Enter the TV IP');
+    expect(roku.connect).not.toHaveBeenCalled();
+    expect(list.length).toBe(1);
+  });
+
+  it('TV failure on a new card carries the created Roku id', async () => {
+    tv.test.and.returnValue(of({ ok: false }));
+    const err = await svc.save(draft({ id: null, ip: '10.0.0.5', tvType: 'panasonic', tvIp: '10.0.0.90' })).catch(e => e);
+    expect(err.stage).toBe('tv');
+    expect(err.rokuId).toBe('new');
+    // retry as an edit of the created Roku does not trip the duplicate-IP guard
+    tv.test.and.returnValue(of({ ok: true }));
+    const r = await svc.save(draft({ id: err.rokuId, ip: '10.0.0.5', tvType: 'panasonic', tvIp: '10.0.0.90' }));
+    expect(r).toEqual({ id: 'new', tvStatus: 'ok' });
+  });
+
   it('none clears the TV', async () => {
     list[0].tv = { type: 'panasonic', ip: '10.0.0.90' };
     const r = await svc.save(draft());

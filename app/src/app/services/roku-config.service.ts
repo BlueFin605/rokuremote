@@ -7,7 +7,7 @@ import type { TvType } from './saved-roku';
 export interface RokuDraft { id: string | null; name: string; ip: string; tvType: TvType; tvIp: string; }
 export interface SaveResult { id: string; tvStatus: 'none' | 'ok' | 'pairing-required'; }
 export class SaveError extends Error {
-  constructor(public stage: 'roku' | 'tv', message: string, public kind?: 'limited-mode') { super(message); }
+  constructor(public stage: 'roku' | 'tv', message: string, public kind?: 'limited-mode', public rokuId?: string) { super(message); }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,6 +21,9 @@ export class RokuConfigService {
     if (this.roku.rokus.some(r => r.ip === ip && r.id !== draft.id)) {
       throw new SaveError('roku', 'Another Roku already uses that IP');
     }
+
+    const tvIp = draft.tvIp.trim();
+    if (draft.tvType !== 'none' && !tvIp) throw new SaveError('tv', 'Enter the TV IP');
 
     const existing = draft.id ? this.roku.rokus.find(r => r.id === draft.id) : undefined;
     let id = existing?.id ?? '';
@@ -43,18 +46,16 @@ export class RokuConfigService {
       this.roku.setTv(id, 'none', null);
       return { id, tvStatus: 'none' };
     }
-    const tvIp = draft.tvIp.trim();
-    if (!tvIp) throw new SaveError('tv', 'Enter the TV IP');
     let result: { ok: boolean; pairingRequired?: boolean };
     try {
       result = await firstValueFrom(this.tv.test(draft.tvType, tvIp));
     } catch {
-      throw new SaveError('tv', 'Could not reach the TV');
+      throw new SaveError('tv', 'Could not reach the TV', undefined, id);
     }
     if (result.ok || result.pairingRequired) {
       this.roku.setTv(id, draft.tvType, tvIp);
       return { id, tvStatus: result.ok ? 'ok' : 'pairing-required' };
     }
-    throw new SaveError('tv', 'Could not reach the TV');
+    throw new SaveError('tv', 'Could not reach the TV', undefined, id);
   }
 }

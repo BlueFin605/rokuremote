@@ -109,6 +109,7 @@ export class RokuCardComponent implements OnChanges, OnDestroy {
       this.saved.emit(result);
     } catch (e: any) {
       this.error = e instanceof SaveError ? e : new SaveError('roku', e?.message ?? 'Save failed');
+      if (this.error.rokuId) this.draft.id = this.error.rokuId;
     } finally {
       this.saving = false;
     }
