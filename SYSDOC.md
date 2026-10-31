@@ -52,8 +52,9 @@ running natively. `APP_VERSION` is a build-time constant in
   manual mode (`autoUpdate: false` in `capacitor.config.ts`), so web-layer
   changes ship without a new APK. The deploy workflow zips the built web app
   to `/android/bundles/<version>.zip` and writes
-  `/android/bundles/latest.json` (`version`, `url`, `minNativeVersion`; not
-  cached). `update.service.ts` fetches it when setup or remote loads; if its
+  `/android/bundles/latest.json` (`version`, `url`, `minNativeVersion`,
+  `checksum` = sha256 of the zip, which the Capgo plugin requires to install;
+  not cached). `update.service.ts` fetches it when setup or remote loads; if its
   version is newer than `APP_VERSION` the Update button appears
   (`update-button` component: download with progress, then switch bundle). If
   the installed APK's version is below `minNativeVersion` it shows "Download

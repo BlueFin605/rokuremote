@@ -14,7 +14,7 @@ class FakeUpdate {
   check = jasmine.createSpy('check').and.resolveTo();
   setState(s: UpdateState) {
     this.state = s;
-    this.latest = s === 'none' ? null : { version: '1.0.42', url: 'u', minNativeVersion: '1.0.1' };
+    this.latest = s === 'none' ? null : { version: '1.0.42', url: 'u', minNativeVersion: '1.0.1', checksum: 'abc123' };
     this.changes$.next(s);
   }
 }
