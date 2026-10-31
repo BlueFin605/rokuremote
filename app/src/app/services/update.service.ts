@@ -5,7 +5,7 @@ import { BehaviorSubject } from 'rxjs';
 import { APP_VERSION } from '../version';
 import { NativeInfoService } from './native-info.service';
 
-export interface LatestBundle { version: string; url: string; minNativeVersion: string; }
+export interface LatestBundle { version: string; url: string; minNativeVersion: string; checksum: string; }
 export type UpdateState = 'none' | 'available' | 'native-required';
 export const BUNDLE_URL_PREFIX = 'https://roku.bluefin605.com/android/bundles/';
 export const LATEST_URL = 'https://roku.bluefin605.com/android/bundles/latest.json';
@@ -29,7 +29,7 @@ export const INSTALLED_VERSION = new InjectionToken<string>('INSTALLED_VERSION',
 
 export interface UpdaterBundle { id: string; version?: string }
 export interface UpdaterPlugin {
-  download(opts: { url: string; version: string }): Promise<UpdaterBundle>;
+  download(opts: { url: string; version: string; checksum: string }): Promise<UpdaterBundle>;
   set(bundle: UpdaterBundle): Promise<void>;
   notifyAppReady(): Promise<unknown>;
   addListener(event: 'download', cb: (e: { percent: number }) => void): Promise<{ remove(): Promise<void> }>;
@@ -72,10 +72,13 @@ export class UpdateService {
     let listener: { remove(): Promise<void> } | null = null;
     try {
       listener = await this.updater.addListener('download', e => this.progress$.next(e.percent));
-      const bundle = await this.updater.download({ url: latest.url, version: latest.version });
+      const bundle = await this.updater.download({ url: latest.url, version: latest.version, checksum: latest.checksum });
       await this.updater.set(bundle);
-    } catch {
-      this.error$.next('Update failed, try again');
+    } catch (e) {
+      // Capacitor rejects with a plain { message } object, not always an Error.
+      const m = (e as { message?: unknown } | string | null);
+      const detail = typeof m === 'string' ? m : typeof m?.message === 'string' ? m.message : '';
+      this.error$.next(detail ? `Update failed: ${detail}` : 'Update failed, try again');
     } finally {
       this.progress$.next(null);
       try { await listener?.remove(); } catch { /* ignore */ }
@@ -90,7 +93,8 @@ export class UpdateService {
       const res = await this.http({ url: LATEST_URL + '?t=' + Date.now() });
       const d = res.data as Partial<LatestBundle> | null;
       if (res.status !== 200 || !d || typeof d !== 'object'
-        || typeof d.version !== 'string' || typeof d.url !== 'string' || typeof d.minNativeVersion !== 'string') {
+        || typeof d.version !== 'string' || typeof d.url !== 'string' || typeof d.minNativeVersion !== 'string'
+        || typeof d.checksum !== 'string' || !d.checksum) {
         return this.set(null, 'none');
       }
       const latest = d as LatestBundle;

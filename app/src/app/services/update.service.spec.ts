@@ -22,7 +22,7 @@ describe('UpdateService', () => {
     return TestBed.inject(UpdateService);
   }
   const ok = (data: unknown) => get.and.resolveTo({ status: 200, data });
-  const bundle = (version: string, min = '1.0.1') => ({ version, url: 'u', minNativeVersion: min });
+  const bundle = (version: string, min = '1.0.1') => ({ version, url: 'u', minNativeVersion: min, checksum: 'abc123' });
 
   beforeEach(() => { get = jasmine.createSpy('get'); });
 
@@ -59,6 +59,10 @@ describe('UpdateService', () => {
     ok(bundle('1.0.6')); const s = setup({ installed: 'dev' }); await s.check();
     expect(s.state).toBe('none');
   });
+  it('manifest without a checksum -> none', async () => {
+    ok({ version: '1.0.6', url: 'u', minNativeVersion: '1.0.1' }); const s = setup(); await s.check();
+    expect(s.state).toBe('none');
+  });
   it('fetch rejects -> none', async () => {
     get.and.rejectWith(new Error('x')); const s = setup(); await s.check(); expect(s.state).toBe('none');
   });
@@ -92,7 +96,7 @@ describe('UpdateService', () => {
           onDownload = cb; return { remove };
         }),
       };
-      ok({ version: '1.0.6', url: 'https://roku.bluefin605.com/android/bundles/1.0.6.zip', minNativeVersion: '1.0.1' });
+      ok({ version: '1.0.6', url: 'https://roku.bluefin605.com/android/bundles/1.0.6.zip', minNativeVersion: '1.0.1', checksum: 'abc123' });
       const s = setup({ plugin });
       if (check) await s.check();
       return s;
@@ -101,7 +105,7 @@ describe('UpdateService', () => {
     it('success: download then set with returned bundle, removes listener', async () => {
       const s = await ready();
       await s.apply();
-      expect(plugin.download).toHaveBeenCalledWith({ url: 'https://roku.bluefin605.com/android/bundles/1.0.6.zip', version: '1.0.6' });
+      expect(plugin.download).toHaveBeenCalledWith({ url: 'https://roku.bluefin605.com/android/bundles/1.0.6.zip', version: '1.0.6', checksum: 'abc123' });
       expect(plugin.set).toHaveBeenCalledWith({ id: 'b1', version: '1.0.6' });
       expect(plugin.download).toHaveBeenCalledBefore(plugin.set);
       expect(remove).toHaveBeenCalled();
@@ -109,7 +113,7 @@ describe('UpdateService', () => {
     });
     it('rejects a url outside the bundles path without downloading', async () => {
       const s = await ready(false);
-      ok({ version: '1.0.6', url: 'https://evil.example.com/1.0.6.zip', minNativeVersion: '1.0.1' });
+      ok({ version: '1.0.6', url: 'https://evil.example.com/1.0.6.zip', minNativeVersion: '1.0.1', checksum: 'abc123' });
       await s.check();
       await s.apply();
       expect(plugin.download).not.toHaveBeenCalled();
@@ -138,7 +142,7 @@ describe('UpdateService', () => {
       const s = await ready();
       plugin.download.and.rejectWith(new Error('boom'));
       await s.apply();
-      expect(s.error$.value).toBe('Update failed, try again');
+      expect(s.error$.value).toBe('Update failed: boom');
       expect(plugin.set).not.toHaveBeenCalled();
       expect(s.progress$.value).toBeNull();
       expect(remove).toHaveBeenCalled();
@@ -147,7 +151,13 @@ describe('UpdateService', () => {
       const s = await ready();
       plugin.set.and.rejectWith(new Error('x'));
       await s.apply();
-      expect(s.error$.value).toBe('Update failed, try again');
+      expect(s.error$.value).toBe('Update failed: x');
+    });
+    it('reports the message of a plain Capacitor rejection object', async () => {
+      const s = await ready();
+      plugin.download.and.rejectWith({ message: 'Checksum required' });
+      await s.apply();
+      expect(s.error$.value).toBe('Update failed: Checksum required');
     });
     it('second call during a download is ignored', async () => {
       const s = await ready();
