@@ -70,7 +70,9 @@ running natively. `APP_VERSION` is a build-time constant in
   See `infra/README.md` for stack details, config, and CDK commands — not
   repeated here.
 - `docs/` — design notes plus per-OS ESP32 toolchain setup walkthroughs
-  (`esp32-macbook.md`, `esp32-windows.md`).
+  (`esp32-macbook.md`, `esp32-windows.md`). `docs/proxy-scenarios.md` explains
+  where the proxy is hosted and how browser, Apple + ESP32, and Android reach
+  it, with diagrams and code links.
 - `External Resources.md` — link dump of external Roku ECP/private-listening
   API docs and related community implementations.
 
