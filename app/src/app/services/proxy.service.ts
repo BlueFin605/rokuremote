@@ -129,12 +129,31 @@ export class ProxyService {
     if (this.isEsp32Origin()) {
       return `${window.location.protocol}//${window.location.hostname}:81/api/audio`;
     }
+    // Native shell (origin is localhost) or any non-same-origin ESP32 proxy: derive from the configured proxy URL.
+    const esp = this.esp32ProxyHost();
+    if (esp) {
+      return `${esp.protocol}//${esp.hostname}:81/api/audio`;
+    }
     return `${this.apiBase()}/audio`;
+  }
+
+  private isEsp32Host(host: string): boolean {
+    return host === 'roku-proxy' || host === 'roku-proxy.local' || !!host.match(/^192\.168\./);
+  }
+
+  /** The configured proxy URL when it points at an ESP32 on its default port 80 (audio lives on :81). */
+  private esp32ProxyHost(): URL | null {
+    if (!this.proxyUrl) return null;
+    try {
+      const u = new URL(this.proxyUrl);
+      return this.isEsp32Host(u.hostname) && u.port === '' ? u : null;
+    } catch {
+      return null;
+    }
   }
 
   private isEsp32Origin(): boolean {
     if (typeof window === 'undefined') return false;
-    const host = window.location.hostname;
-    return host === 'roku-proxy' || host === 'roku-proxy.local' || !!host.match(/^192\.168\./);
+    return this.isEsp32Host(window.location.hostname);
   }
 }
